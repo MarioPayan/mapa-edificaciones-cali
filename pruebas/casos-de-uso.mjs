@@ -175,23 +175,33 @@ const main = async () => {
    * ciego en el centro.
    */
   const tocarMapa = async (fx = 0.3, fy = 0.5) => {
+    // El fondo del diálogo que se acaba de cerrar puede seguir un instante en
+    // pantalla; en un servidor remoto se nota más que en local.
+    await pagina.waitForSelector('.d-ficha-fondo', { state: 'detached' }).catch(() => {})
+
     // Se busca un punto donde el mapa esté realmente encima: el aviso de «toque
-    // el mapa» y el panel de coordinación se le superponen, y un click ciego
-    // aterriza en ellos.
-    const punto = await pagina.evaluate(
-      ([fx, fy]) => {
-        const caja = document.querySelector('.d-mapa').getBoundingClientRect()
-        const candidatos = [[fx, fy], [fx, 0.75], [0.15, 0.7], [0.8, 0.65], [0.5, 0.85]]
-        for (const [cx, cy] of candidatos) {
-          const x = caja.x + caja.width * cx
-          const y = caja.y + caja.height * cy
-          const encima = document.elementFromPoint(x, y)
-          if (encima?.closest('.leaflet-container')) return { x, y }
-        }
-        return null
-      },
-      [fx, fy],
-    )
+    // el mapa» se le superpone y un click ciego aterriza en él.
+    const buscarPunto = () =>
+      pagina.evaluate(
+        ([fx, fy]) => {
+          const caja = document.querySelector('.d-mapa').getBoundingClientRect()
+          const candidatos = [[fx, fy], [fx, 0.75], [0.15, 0.7], [0.8, 0.65], [0.5, 0.85]]
+          for (const [cx, cy] of candidatos) {
+            const x = caja.x + caja.width * cx
+            const y = caja.y + caja.height * cy
+            const encima = document.elementFromPoint(x, y)
+            if (encima?.closest('.leaflet-container')) return { x, y }
+          }
+          return null
+        },
+        [fx, fy],
+      )
+
+    let punto = null
+    for (let intento = 0; intento < 10 && !punto; intento++) {
+      punto = await buscarPunto()
+      if (!punto) await pagina.waitForTimeout(200)
+    }
     if (!punto) throw new Error('No hay ningún punto del mapa libre para tocar')
     await pagina.mouse.click(punto.x, punto.y)
   }
