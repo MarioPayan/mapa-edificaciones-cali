@@ -1,12 +1,12 @@
 /**
  * Modelo de datos de una edificación afectada.
- * Refleja la pestaña `publico` descrita en PLAN.md §7 — es decir, el subconjunto
- * de columnas que SÍ pueden salir de la hoja. Las columnas de contacto
+ * Refleja la pestaña `publico` de la hoja: el subconjunto de columnas que SÍ
+ * pueden salir de la operación. Las columnas de contacto
  * (nombre, teléfono, correo, unidad) no existen en este tipo a propósito:
  * lo que no se modela no se puede pintar por accidente.
  */
 
-/** Semáforo de PLAN.md §2 R-02: rojo = colapsada, naranja = por visitar, verde = visitada. */
+/** Semáforo (R-02): rojo = colapsada, naranja = por visitar, verde = visitada. */
 export const ESTADOS = ['ROJO', 'NARANJA', 'VERDE'] as const
 export type Estado = (typeof ESTADOS)[number]
 

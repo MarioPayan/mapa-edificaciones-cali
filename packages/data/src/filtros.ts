@@ -13,7 +13,7 @@ export interface Filtro {
 
 export const FILTRO_VACIO: Filtro = { estados: [], comuna: '', barrio: '', texto: '' }
 
-/** Horas que dura un reclamo antes de liberarse solo (PLAN.md §6). */
+/** Horas que dura un reclamo antes de liberarse solo (documentado en el README). */
 export const HORAS_RECLAMO = 4
 
 function sinTildes(s: string): string {

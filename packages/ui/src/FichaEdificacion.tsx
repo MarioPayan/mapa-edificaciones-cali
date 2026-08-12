@@ -58,9 +58,8 @@ export interface FichaEdificacionProps {
 }
 
 /**
- * La ficha que pidió Dania: «que cuando se toque ese cosito aparezca qué se
- * hizo, la caracterización y la información que uno recolectó» (4.ogg 01:49).
- * Nunca muestra datos de contacto: no existen en el modelo.
+ * Al tocar un punto: qué se hizo, la caracterización y lo que se recogió en la
+ * visita (R-03). Nunca muestra datos de contacto: no existen en el modelo.
  */
 export function FichaEdificacion({ edificacion, onCerrar, acciones }: FichaEdificacionProps) {
   const e = edificacion

@@ -1,5 +1,5 @@
 /**
- * Único punto de escritura de la operación (PLAN.md §6).
+ * Único punto de escritura de la operación (documentado en el README).
  *
  * Recibe un envío desde el mapa, lo anexa crudo a `log` y solo después toca
  * `edificaciones`. Si la lógica falla algún día, el `log` permite reconstruir:

@@ -8,7 +8,7 @@
  * `module` no está definido y la línea no hace nada.
  */
 
-/** Horas que dura un reclamo antes de liberarse solo (PLAN.md §6). */
+/** Horas que dura un reclamo antes de liberarse solo (documentado en el README). */
 var HORAS_RECLAMO = 4
 
 /** Tope de texto libre. Evita que un pegado accidental llene la hoja. */

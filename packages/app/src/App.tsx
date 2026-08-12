@@ -56,7 +56,7 @@ function horaCorta(fecha: Date): string {
   return fecha.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
 }
 
-/** GPS del teléfono. No necesita datos móviles: funciona sin señal (PLAN.md §6). */
+/** GPS del teléfono. No necesita datos móviles: funciona sin señal (documentado en el README). */
 function pedirUbicacion(): Promise<GeolocationPosition> {
   return new Promise((resolver, rechazar) => {
     if (!navigator.geolocation) {

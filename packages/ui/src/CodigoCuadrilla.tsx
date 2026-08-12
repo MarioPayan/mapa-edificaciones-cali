@@ -6,9 +6,9 @@ export interface CodigoCuadrillaProps {
 }
 
 /**
- * Identificación mínima: un código de cuadrilla, escrito una vez y recordado
- * en el teléfono. Es lo que evita «colas larguísimas para tomar un nombre y un
- * correo» (1.ogg 01:20). Atribuye, no autentica — y así se dice en PLAN.md §9.
+ * Identificación mínima: un código de cuadrilla, escrito una vez y recordado en
+ * el teléfono. Evita las colas de registro con nombre y correo que hoy retrasan
+ * la salida a campo (R-12). Atribuye, no autentica, y así está declarado.
  */
 export function CodigoCuadrilla({ cuadrilla, onCambiar }: CodigoCuadrillaProps) {
   const [editando, setEditando] = useState(false)

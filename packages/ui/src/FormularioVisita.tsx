@@ -73,7 +73,7 @@ export interface FormularioCaracterizarProps {
 }
 
 /**
- * La captura que el formulario oficial no permite (R-05, 3.mp4 00:30):
+ * La captura que el formulario oficial no permite (R-05):
  * torres y apartamentos por torre en vez de un número exacto de personas, y
  * ocupación como texto libre donde «varía» es una respuesta válida.
  */
@@ -222,7 +222,7 @@ export interface FormularioColapsoProps {
 /**
  * Lo observable en sitio de una edificación colapsada (R-04a). Rescatadas puede
  * quedar vacío: «sin dato» es más honesto que un cero inventado, y el cruce con
- * hospitales no lo puede hacer esta herramienta (PLAN.md §10.6).
+ * hospitales no lo puede hacer esta herramienta (ver el README).
  */
 export function FormularioColapso({ edificacion, onEnviar, onCancelar }: FormularioColapsoProps) {
   const [rescatadas, setRescatadas] = useState(edificacion.rescatadasEnSitio?.toString() ?? '')

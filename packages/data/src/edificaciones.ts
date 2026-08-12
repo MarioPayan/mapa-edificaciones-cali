@@ -2,7 +2,7 @@ import { filasComoObjetos, normalizarClave, parsearCSV } from './csv.ts'
 import { ESTADOS, type Edificacion, type Estado, type Precision } from './tipos.ts'
 
 /**
- * Columnas que NUNCA deben salir de la hoja (PLAN.md §7, R-17).
+ * Columnas que NUNCA deben salir de la hoja (R-17).
  * Si aparecen en el CSV publicado significa que se publicó la pestaña equivocada:
  * el fallo es de la hoja, pero se detecta aquí y se grita, porque aquí es donde
  * se nota. Los datos se descartan igual — el mapeo solo lee columnas conocidas.
@@ -39,7 +39,7 @@ function aEstado(valor: string): Estado {
   const directo = ESTADOS.find((e) => e === clave.toUpperCase())
   if (directo) return directo
   // Sin estado legible se asume PENDIENTE, nunca VISITADA: el error caro es
-  // esconder una edificación que nadie ha visitado (1.ogg 03:27).
+  // esconder una edificación que nadie ha visitado.
   return SINONIMOS_ESTADO[clave] ?? 'NARANJA'
 }
 
@@ -68,7 +68,7 @@ function filaAEdificacion(f: Record<string, string>, indice: number): Edificacio
   const lonVisita = aNumero(f['lon_visita'])
   const hayVisita = latVisita !== null && lonVisita !== null
 
-  // La coordenada de la visita manda sobre la del reporte (PLAN.md §6, R-09):
+  // La coordenada de la visita manda sobre la del reporte (R-09):
   // la tomó una cuadrilla parada frente al inmueble.
   const lat = hayVisita ? latVisita : aNumero(f['lat_reporte'])
   const lon = hayVisita ? lonVisita : aNumero(f['lon_reporte'])
