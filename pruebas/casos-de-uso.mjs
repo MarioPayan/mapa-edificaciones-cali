@@ -134,9 +134,34 @@ const main = async () => {
    * ciego en el centro.
    */
   const tocarMapa = async (fx = 0.3, fy = 0.5) => {
-    const caja = await pagina.locator('.d-mapa').boundingBox()
-    if (!caja) throw new Error('El mapa no está visible')
-    await pagina.mouse.click(caja.x + caja.width * fx, caja.y + caja.height * fy)
+    // Se busca un punto donde el mapa esté realmente encima: el aviso de «toque
+    // el mapa» y el panel de coordinación se le superponen, y un click ciego
+    // aterriza en ellos.
+    const punto = await pagina.evaluate(
+      ([fx, fy]) => {
+        const caja = document.querySelector('.d-mapa').getBoundingClientRect()
+        const candidatos = [[fx, fy], [fx, 0.75], [0.15, 0.7], [0.8, 0.65], [0.5, 0.85]]
+        for (const [cx, cy] of candidatos) {
+          const x = caja.x + caja.width * cx
+          const y = caja.y + caja.height * cy
+          const encima = document.elementFromPoint(x, y)
+          if (encima?.closest('.leaflet-container')) return { x, y }
+        }
+        return null
+      },
+      [fx, fy],
+    )
+    if (!punto) throw new Error('No hay ningún punto del mapa libre para tocar')
+    await pagina.mouse.click(punto.x, punto.y)
+  }
+
+  /** El panel de coordinación puede venir abierto (modo práctica) o cerrado. */
+  const coordinacion = async (queremosAbierto) => {
+    const abierto = (await pagina.locator('.d-coordinacion').count()) > 0
+    if (abierto !== queremosAbierto) {
+      await pagina.getByRole('button', { name: 'Coordinación' }).click()
+      await pagina.waitForTimeout(300)
+    }
   }
 
   const cerrarFicha = async () => {
@@ -348,7 +373,7 @@ const main = async () => {
   console.log('CU-11 — Coordinación ubica reportes y fusiona duplicados')
   await pagina.getByLabel('Buscar dirección o id').fill('')
   await pagina.waitForTimeout(200)
-  await pagina.getByRole('button', { name: 'Coordinación' }).click()
+  await coordinacion(true)
   await pagina.waitForSelector('.d-coordinacion')
   const panel = (await pagina.locator('.d-coordinacion').textContent()) ?? ''
   comprobar('CU-11', 'lista los reportes sin ubicar', /sin ubicar/.test(panel))
@@ -402,7 +427,7 @@ const main = async () => {
   // ─────────────────────────────────────────────────────────────── CU-07
   if (CON_ENDPOINT) {
     console.log('CU-07 — Enviar sin señal (cola offline)')
-    await pagina.getByRole('button', { name: 'Coordinación' }).click()
+    await coordinacion(false)
     const enviadosAntes = recibidos.length
     sinSenal = true
     await contexto.setOffline(true)
