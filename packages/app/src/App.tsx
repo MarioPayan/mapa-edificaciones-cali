@@ -49,6 +49,14 @@ const ES_PRACTICA = !URL_ENVIOS && ES_DEMO
 const CLAVE_CUADRILLA = 'dania:cuadrilla'
 const CLAVE_COORDINACION = 'dania:coordinacion'
 
+/**
+ * En modo práctica se entra con una cuadrilla puesta y coordinación abierta:
+ * quien abre el enlace para probar la idea quiere marcar puntos, no configurar
+ * nada. Ambas cosas siguen siendo editables. Con datos reales no se presupone
+ * ningún código: ahí el código identifica a una cuadrilla de verdad.
+ */
+const CUADRILLA_PRACTICA = 'C-01'
+
 type Vista = 'mapa' | 'lista'
 type ModoPunto = { tipo: 'ubicar'; edificacion: Edificacion } | { tipo: 'crear' } | null
 
@@ -80,10 +88,13 @@ export function App() {
   const [filtro, setFiltro] = useState<Filtro>(FILTRO_VACIO)
   const [vista, setVista] = useState<Vista>('mapa')
   const [seleccionadaId, setSeleccionadaId] = useState<string | null>(null)
-  const [cuadrilla, setCuadrilla] = useState(() => localStorage.getItem(CLAVE_CUADRILLA) ?? '')
-  const [coordinacion, setCoordinacion] = useState(
-    () => localStorage.getItem(CLAVE_COORDINACION) === 'si',
+  const [cuadrilla, setCuadrilla] = useState(
+    () => localStorage.getItem(CLAVE_CUADRILLA) ?? (ES_PRACTICA ? CUADRILLA_PRACTICA : ''),
   )
+  const [coordinacion, setCoordinacion] = useState(() => {
+    const guardado = localStorage.getItem(CLAVE_COORDINACION)
+    return guardado === null ? ES_PRACTICA : guardado === 'si'
+  })
   const [modoPunto, setModoPunto] = useState<ModoPunto>(null)
   const [puntoCreacion, setPuntoCreacion] = useState<{ lat: number; lon: number } | null>(null)
   const [ubicando, setUbicando] = useState(false)
@@ -282,10 +293,10 @@ export function App() {
 
       {ES_PRACTICA && (
         <Aviso tono="info">
-          <strong>Modo práctica con datos de ejemplo.</strong> Pueden reclamar, ubicar y
-          caracterizar para aprender el flujo: los cambios se quedan en este teléfono y no se envían
-          a ninguna parte.
-          {!cuadrilla && ' Empiecen poniendo el código de su cuadrilla arriba.'}
+          <strong>Modo práctica con datos de ejemplo.</strong> Toquen cualquier punto para
+          reclamarlo, ubicarlo con el GPS, caracterizarlo o marcarlo como colapsado; con
+          «Coordinación» abajo pueden además crear puntos nuevos tocando el mapa. Todo se queda en
+          este teléfono y no se envía a ninguna parte.
         </Aviso>
       )}
 

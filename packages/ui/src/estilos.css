@@ -307,6 +307,14 @@ button {
   cursor: crosshair;
 }
 
+/* Mientras se pide tocar el mapa, los marcadores no interceptan el toque: con
+   la ciudad llena de puntos, apuntar a un hueco es imposible con el dedo.
+   Lleva `.leaflet-pane` para ganarle en especificidad a la regla de Leaflet que
+   marca los marcadores como interactivos. */
+[data-modo-punto='true'] .leaflet-pane .leaflet-marker-icon {
+  pointer-events: none;
+}
+
 /* ---------- Lista ---------- */
 
 .d-lista {

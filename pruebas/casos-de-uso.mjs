@@ -16,6 +16,7 @@ import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { chromium } from 'playwright'
+import { filasComoObjetos } from '../packages/data/src/csv.ts'
 
 const RAIZ = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 const PUERTO = 4180
@@ -103,12 +104,11 @@ const main = async () => {
   }
 
   const ponerCodigo = async (codigo) => {
-    const boton = pagina.getByRole('button', { name: 'Poner código de cuadrilla' })
-    if (await boton.isVisible().catch(() => false)) {
-      await boton.click()
-      await pagina.getByLabel('Código de cuadrilla').fill(codigo)
-      await pagina.getByRole('button', { name: 'Listo' }).click()
-    }
+    // En modo práctica ya viene una cuadrilla puesta; el botón la cambia igual.
+    await pagina.locator('.d-cuadrilla').first().click()
+    await pagina.getByLabel('Código de cuadrilla').fill(codigo)
+    await pagina.getByRole('button', { name: 'Listo' }).click()
+    await pagina.waitForTimeout(200)
   }
 
   const abrirPorBusqueda = async (texto) => {
@@ -145,7 +145,34 @@ const main = async () => {
     await pagina.waitForSelector('.d-ficha', { state: 'detached' }).catch(() => {})
   }
 
-  console.log(`\nProbando ${BASE}${CON_ENDPOINT ? '' : ' (desplegado, modo práctica)'}\n`)
+  // Los objetivos salen del CSV que sirve la aplicación, no de direcciones
+  // escritas a mano: así los datos de ejemplo pueden cambiar sin romper esto.
+  const filas = filasComoObjetos(await (await fetch(new URL('demo/edificaciones.csv', BASE))).text())
+  const buscar = (predicado, queEs) => {
+    const fila = filas.find(predicado)
+    if (!fila) throw new Error(`Los datos de ejemplo no traen ${queEs}`)
+    return fila
+  }
+  const objetivo = {
+    visitada: buscar((f) => f.estado === 'VERDE' && f.caracterizacion, 'una visitada con caracterización'),
+    libre: buscar(
+      (f) => f.estado === 'NARANJA' && !f.reclamada_por && f.lat_reporte && !f.observaciones,
+      'una pendiente libre y ubicada',
+    ),
+    ajena: buscar((f) => f.estado === 'NARANJA' && f.reclamada_por, 'una reclamada por otra cuadrilla'),
+    colapsada: buscar((f) => f.estado === 'ROJO' && f.rescatadas_en_sitio, 'una colapsada con rescatadas'),
+    duplicada: buscar((f) => /fusionar/i.test(f.observaciones ?? ''), 'un reporte duplicado'),
+  }
+  // Otra pendiente libre distinta de la primera, para no pisar los pasos.
+  const libres = filas.filter(
+    (f) => f.estado === 'NARANJA' && !f.reclamada_por && f.lat_reporte && !f.observaciones,
+  )
+  objetivo.libre2 = libres[1] ?? objetivo.libre
+  objetivo.libre3 = libres[2] ?? objetivo.libre
+  objetivo.libre4 = libres[3] ?? objetivo.libre
+
+  console.log(`\nProbando ${BASE}${CON_ENDPOINT ? '' : ' (desplegado, modo práctica)'}`)
+  console.log(`Datos: ${filas.length} edificaciones · objetivos ${Object.entries(objetivo).map(([k, v]) => `${k}=${v.id}`).join(' ')}\n`)
 
   // ─────────────────────────────────────────────────────────────── CU-02
   console.log('CU-02 — Coordinación consulta el panorama general')
@@ -166,12 +193,12 @@ const main = async () => {
 
   // ─────────────────────────────────────────────────────────────── CU-10
   console.log('CU-10 — Consultar la ficha de un punto')
-  await abrirPorBusqueda('Calle 100 Norte 11-11 (')
+  await abrirPorBusqueda(objetivo.visitada.id)
   const textoFicha = (await pagina.locator('.d-ficha').textContent()) ?? ''
   comprobar('CU-10', 'la ficha muestra estado y caracterización',
-    textoFicha.includes('Visitada') && textoFicha.includes('mampostería'))
-  comprobar('CU-10', 'muestra torres y apartamentos por torre',
-    /4 torres/.test(textoFicha) && /30 apts por torre/.test(textoFicha))
+    textoFicha.includes('Visitada') && textoFicha.includes(objetivo.visitada.caracterizacion.slice(0, 30)))
+  comprobar('CU-10', 'muestra el barrio y la comuna del punto',
+    textoFicha.includes(objetivo.visitada.barrio) && textoFicha.includes(objetivo.visitada.comuna))
   comprobar('CU-10', 'no muestra datos de contacto',
     !/tel[ée]fono|contacto|@/i.test(textoFicha))
   await cerrarFicha()
@@ -203,16 +230,17 @@ const main = async () => {
   await pagina.waitForTimeout(300)
   await pagina.getByRole('button', { name: 'Lista' }).click()
   await pagina.waitForSelector('.d-lista')
-  const filas = await pagina.locator('.d-lista__fila').count()
-  comprobar('CU-03', 'la lista muestra las pendientes del filtro', filas >= 4, `${filas} filas`)
+  const filasVisibles = await pagina.locator('.d-lista__fila').count()
+  comprobar('CU-03', 'la lista muestra las pendientes del filtro', filasVisibles >= 4,
+    `${filasVisibles} filas`)
 
   const botonesReclamar = pagina.locator('.d-lista__fila button:not([disabled])', { hasText: 'Reclamar' })
   const reclamables = await botonesReclamar.count()
   comprobar('CU-03', 'se puede reclamar desde la lista, sin abrir cada ficha', reclamables >= 2,
     `${reclamables} disponibles`)
   // Reclamar dos concretas antes de salir, como en el flujo del CU.
-  for (const objetivo of [/^Reclamar Calle 106 Norte/, /^Reclamar Calle 112 Norte/]) {
-    await pagina.getByRole('button', { name: objetivo }).click()
+  for (const fila of [objetivo.libre3, objetivo.libre4]) {
+    await pagina.getByRole('button', { name: `Reclamar ${fila.direccion_texto}` }).click()
     await pagina.waitForTimeout(400)
   }
   const mias = await pagina.locator('.d-lista__mia').count()
@@ -226,7 +254,7 @@ const main = async () => {
   comprobar('CU-04', 'la reclamada se distingue en el mapa sin ser un cuarto color', conAnillo >= 1,
     `${conAnillo} con anillo`)
 
-  await pagina.getByLabel('Buscar dirección o id').fill('Calle 101 Norte')
+  await pagina.getByLabel('Buscar dirección o id').fill(objetivo.ajena.id)
   await pagina.waitForTimeout(400)
   await pagina.locator('.leaflet-marker-icon').first().click()
   await pagina.waitForSelector('.d-ficha')
@@ -238,7 +266,7 @@ const main = async () => {
   if (CON_ENDPOINT) {
     // CU-04 alt.: el servidor tiene la última palabra aunque el CSV esté viejo.
     respuestaFalsa = { ok: false, error: 'reclamada_por_C-03' }
-    await abrirPorBusqueda('Calle 104 Norte')
+    await abrirPorBusqueda(objetivo.libre2.id)
     await pagina.getByRole('button', { name: 'Reclamar', exact: true }).click()
     await cerrarFicha()
     await pagina.waitForSelector('.d-cola__fila--rechazo', { timeout: 10000 })
@@ -251,7 +279,7 @@ const main = async () => {
 
   // ─────────────────────────────────────────────────────────────── CU-05
   console.log('CU-05 — Corregir en campo una dirección errada')
-  await abrirPorBusqueda('Carrera 102 Oeste')
+  await abrirPorBusqueda(objetivo.libre.id)
   const antesDeUbicar = (await pagina.locator('.d-ficha').textContent()) ?? ''
   comprobar('CU-05', 'avisa que la ubicación es aproximada', antesDeUbicar.includes('aproximada'))
   await pagina.getByRole('button', { name: 'Estoy aquí' }).click()
@@ -270,7 +298,7 @@ const main = async () => {
 
   // ─────────────────────────────────────────────────────────────── CU-06
   console.log('CU-06 — Caracterizar en sitio y cerrar la visita')
-  await abrirPorBusqueda('Avenida 108 Norte')
+  await abrirPorBusqueda(objetivo.libre3.id)
   await pagina.getByRole('button', { name: 'Caracterizar' }).click()
   await pagina.getByLabel('Caracterización').fill('Grietas diagonales en la caja de escaleras.')
   await pagina.getByLabel('Torres').fill('2')
@@ -297,7 +325,7 @@ const main = async () => {
   // ─────────────────────────────────────────────────────────────── CU-09
   console.log('CU-09 — Marcar una edificación colapsada')
   await limpiarFiltros()
-  await abrirPorBusqueda('Carrera 110 Oeste')
+  await abrirPorBusqueda(objetivo.libre4.id)
   await pagina.getByRole('button', { name: 'Marcar colapsada' }).click()
   await pagina.getByLabel('Personas rescatadas en sitio').fill('6')
   await pagina.getByLabel('¿Quién lo informó?').fill('cuadrilla C-07 en sitio')
@@ -310,10 +338,10 @@ const main = async () => {
   await cerrarFicha()
 
   // Una colapsada sin dato dice «sin dato», no cero.
-  await abrirPorBusqueda('Avenida 103 Norte')
+  await abrirPorBusqueda(objetivo.colapsada.id)
   const colapsadaConDato = (await pagina.locator('.d-ficha').textContent()) ?? ''
-  comprobar('CU-09', 'las colapsadas previas conservan su fuente y hora',
-    colapsadaConDato.includes('14') && colapsadaConDato.includes('C-03'))
+  comprobar('CU-09', 'las colapsadas previas conservan su dato de rescatadas',
+    colapsadaConDato.includes(objetivo.colapsada.rescatadas_en_sitio))
   await cerrarFicha()
 
   // ─────────────────────────────────────────────────────────────── CU-11
@@ -338,7 +366,7 @@ const main = async () => {
     `${antesDeUbicarMapa} → ${despuesDeUbicarMapa}`)
 
   // Fusionar el segundo reporte de la misma torre con el principal.
-  await abrirPorBusqueda('Calle 100 Norte 11-11 apto 302')
+  await abrirPorBusqueda(objetivo.duplicada.id)
   await pagina.getByRole('button', { name: 'Es duplicada' }).click()
   const opciones = pagina.locator('.d-formulario select.d-input')
   await opciones.selectOption({ index: 1 })
@@ -349,7 +377,7 @@ const main = async () => {
   await pagina.getByLabel('Buscar dirección o id').fill('')
   await pagina.waitForTimeout(400)
   const duplicadoFuera = await pagina
-    .locator('.leaflet-marker-icon[title*="apto 302"]')
+    .locator(`.leaflet-marker-icon[title*="${objetivo.duplicada.direccion_texto}"]`)
     .count()
   comprobar('CU-11', 'el duplicado sale del mapa', duplicadoFuera === 0,
     `${antesDeFusionar} marcadores antes de fusionar`)
@@ -379,7 +407,7 @@ const main = async () => {
     sinSenal = true
     await contexto.setOffline(true)
 
-    await abrirPorBusqueda('Avenida 111 Norte')
+    await abrirPorBusqueda(objetivo.libre2.id)
     await pagina.getByRole('button', { name: 'Reclamar', exact: true }).click()
     await pagina.waitForTimeout(300)
     await pagina.getByRole('button', { name: 'Caracterizar' }).click()
@@ -410,7 +438,7 @@ const main = async () => {
 
   // ─────────────────────────────────────────────────────────────── CU-08
   console.log('CU-08 — Evitar una visita duplicada')
-  await abrirPorBusqueda('Calle 100 Norte 11-11 (')
+  await abrirPorBusqueda(objetivo.visitada.id)
   const yaVisitada = (await pagina.locator('.d-ficha').textContent()) ?? ''
   const puedeReclamarVisitada = await pagina
     .getByRole('button', { name: 'Reclamar', exact: true })

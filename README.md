@@ -8,9 +8,10 @@ Está hecho para una cuadrilla con un teléfono en la calle: sirve sin señal, s
 aplicación desde el navegador y no exige cuenta de nadie.
 
 **Publicado en <https://mariopayan.github.io/mapa-edificaciones-cali/>** — con datos de ejemplo y
-en modo práctica: se puede recorrer el flujo completo (reclamar, ubicar con GPS, caracterizar,
-marcar colapsada, coordinar) y nada sale del teléfono. Para operar de verdad hay que conectarlo a
-la hoja de la operación (ver más abajo).
+en modo práctica: se entra con una cuadrilla ya puesta y coordinación abierta, así que desde el
+primer toque se puede reclamar, ubicar con GPS, caracterizar, marcar colapsada, fusionar duplicados
+y crear puntos nuevos tocando el mapa. Nada sale del teléfono. Para operar de verdad hay que
+conectarlo a la hoja de la operación (ver más abajo).
 
 ## Qué problema resuelve
 
@@ -60,7 +61,7 @@ sobre datos reales, el mapa es de solo lectura.
 
 | Paquete | Qué hace | De qué depende |
 |---------|----------|----------------|
-| `@dania/data` | Modelo, parseo del CSV, filtros, envíos y vencimiento de reclamos | nada |
+| `@dania/data` | Modelo, parseo del CSV, filtros, envíos, vencimiento de reclamos y el catálogo de barrios | nada |
 | `@dania/ui` | Semáforo, filtros (Base UI), ficha, lista, formularios y mapa (Leaflet) | `@dania/data`, React |
 | `@dania/app` | Composición, carga y refresco, cola offline, PWA, despliegue | los dos anteriores |
 | `@dania/apps-script` | Único punto de escritura: `doPost` e ingesta sobre la hoja | nada (corre en Google) |
@@ -97,7 +98,14 @@ Dos barreras, no una:
    esos datos no llegan a la pantalla — y la aplicación muestra un aviso rojo pidiendo corregir la
    publicación. Hay pruebas que lo verifican, unitarias y en navegador.
 
-Los datos de ejemplo son inventados: direcciones con «(ejemplo)» en barrios reales de Cali.
+Los datos de ejemplo son inventados: direcciones con «(ejemplo)» repartidas por las 22 comunas,
+generadas con `node herramientas/generar-demo.mjs`.
+
+Los barrios sí son reales: `packages/data/src/barrios.ts` trae los 367 barrios de Cali con su
+comuna, tomados de OpenStreetMap (ODbL), que a su vez los importó del POT. El filtro y el alta de
+edificaciones los ofrecen aunque no haya ningún reporte en ellos — una cuadrilla busca por el
+barrio donde está, no por donde alguien ya reportó. Salvedad anotada en el archivo: la comuna 1 no
+viene en esa importación y se completó a mano.
 
 **Advertencia que conviene repetir:** un mapa público de viviendas dañadas y evacuadas también le
 sirve a quien quiera saquearlas. La página lleva `noindex`, pero una URL de GitHub Pages es pública

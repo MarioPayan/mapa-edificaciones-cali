@@ -1,3 +1,4 @@
+export * from './barrios.ts'
 export * from './tipos.ts'
 export * from './csv.ts'
 export * from './edificaciones.ts'

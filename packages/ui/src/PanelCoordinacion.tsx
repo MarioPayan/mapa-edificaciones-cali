@@ -1,5 +1,5 @@
 import type { DatosCrear, Edificacion, Estado } from '@dania/data'
-import { sinUbicar } from '@dania/data'
+import { barriosDeComuna, buscarBarrio, COMUNAS, sinUbicar } from '@dania/data'
 import { useState } from 'react'
 
 export interface PanelCoordinacionProps {
@@ -115,17 +115,42 @@ export function FormularioCrear({ lat, lon, onEnviar, onCancelar }: FormularioCr
 
       <div className="d-formulario__fila">
         <label className="d-campo">
-          <span className="d-campo__etiqueta">Barrio</span>
-          <input className="d-input" value={barrio} onChange={(e) => setBarrio(e.target.value)} />
-        </label>
-        <label className="d-campo">
           <span className="d-campo__etiqueta">Comuna</span>
-          <select className="d-input" value={comuna} onChange={(e) => setComuna(e.target.value)}>
+          {/* Cali tiene 22 comunas. Nada de «un número entre 1 y 23» (R-14). */}
+          <select
+            className="d-input"
+            value={comuna}
+            onChange={(e) => {
+              setComuna(e.target.value)
+              setBarrio('')
+            }}
+          >
             <option value="">—</option>
-            {/* Cali tiene 22 comunas. Nada de «un número entre 1 y 23» (R-14). */}
-            {Array.from({ length: 22 }, (_, i) => String(i + 1).padStart(2, '0')).map((c) => (
+            {COMUNAS.map((c) => (
               <option key={c} value={c}>
                 {c}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="d-campo">
+          <span className="d-campo__etiqueta">Barrio</span>
+          {/* Del catálogo de barrios de Cali: escribir a mano el mismo barrio de
+              tres maneras distintas rompe después el filtro. */}
+          <select
+            className="d-input"
+            value={barrio}
+            onChange={(e) => {
+              setBarrio(e.target.value)
+              // Elegir el barrio primero también sirve: completa la comuna.
+              const encontrado = buscarBarrio(e.target.value)
+              if (encontrado?.comuna && !comuna) setComuna(encontrado.comuna)
+            }}
+          >
+            <option value="">—</option>
+            {barriosDeComuna(comuna).map((b) => (
+              <option key={b.nombre} value={b.nombre}>
+                {b.nombre}
               </option>
             ))}
           </select>

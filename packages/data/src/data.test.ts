@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { parsearCSV } from './csv.ts'
 import { parsearEdificaciones } from './edificaciones.ts'
+import { barriosDeComuna, BARRIOS, buscarBarrio, COMUNAS } from './barrios.ts'
 import {
+  barriosParaFiltro,
   contarPorEstado,
   fechaLegible,
   filtrar,
@@ -141,5 +143,42 @@ describe('fechaLegible', () => {
     expect(fechaLegible('2026-08-12T05:56:57.467Z')).toBe('12/08 00:56')
     expect(fechaLegible('ayer por la tarde')).toBe('ayer por la tarde')
     expect(fechaLegible('  ')).toBe('')
+  })
+})
+
+describe('catálogo de barrios', () => {
+  it('trae las 22 comunas de Cali con barrios', () => {
+    expect(COMUNAS).toHaveLength(22)
+    const conBarrios = COMUNAS.filter((c) => barriosDeComuna(c).length > 0)
+    expect(conBarrios).toEqual([...COMUNAS])
+  })
+
+  it('cada barrio del catálogo tiene coordenadas dentro de Cali', () => {
+    for (const b of BARRIOS) {
+      expect(b.lat, b.nombre).toBeGreaterThan(3.25)
+      expect(b.lat, b.nombre).toBeLessThan(3.6)
+      expect(b.lon, b.nombre).toBeLessThan(-76.4)
+      expect(b.lon, b.nombre).toBeGreaterThan(-76.7)
+    }
+  })
+
+  it('busca sin distinguir tildes ni mayúsculas', () => {
+    expect(buscarBarrio('chipichape')?.comuna).toBe('02')
+    expect(buscarBarrio('EL PEÑON') ?? buscarBarrio('El Peñón')).toBeDefined()
+    expect(buscarBarrio('barrio que no existe')).toBeUndefined()
+  })
+
+  it('el filtro ofrece los barrios de la comuna aunque no tengan reportes', () => {
+    const { edificaciones } = parsearEdificaciones(csv('E-1,,,dir,Chipichape,02,,,,,,NARANJA,,,,,,,,,,,,,'))
+    const barrios = barriosParaFiltro(edificaciones, '02')
+    expect(barrios).toContain('Chipichape')
+    expect(barrios.length).toBeGreaterThan(5)
+  })
+
+  it('nunca esconde un barrio que sí tiene reportes', () => {
+    const { edificaciones } = parsearEdificaciones(
+      csv('E-1,,,dir,Barrio Inventado,02,,,,,,NARANJA,,,,,,,,,,,,,'),
+    )
+    expect(barriosParaFiltro(edificaciones, '02')).toContain('Barrio Inventado')
   })
 })

@@ -1,3 +1,4 @@
+import { barriosDeComuna } from './barrios.ts'
 import { ESTADOS, estaUbicada, type Edificacion, type Estado } from './tipos.ts'
 
 export interface Filtro {
@@ -45,6 +46,21 @@ export function opcionesDe(edificaciones: Edificacion[], campo: 'comuna' | 'barr
   return [...new Set(edificaciones.map((e) => e[campo]).filter(Boolean))].sort((a, b) =>
     a.localeCompare(b, 'es'),
   )
+}
+
+/**
+ * Barrios que ofrece el selector: los del catálogo de Cali para esa comuna, más
+ * los que aparezcan en los datos y no estén en el catálogo.
+ *
+ * Se listan aunque no tengan ni un reporte: una cuadrilla busca por el barrio
+ * donde está, no por el barrio donde alguien ya reportó. Y nunca se esconde un
+ * barrio que sí tiene reportes solo porque el catálogo no lo conozca.
+ */
+export function barriosParaFiltro(edificaciones: Edificacion[], comuna: string): string[] {
+  const enDatos = comuna ? edificaciones.filter((e) => e.comuna === comuna) : edificaciones
+  const nombres = new Set(barriosDeComuna(comuna).map((b) => b.nombre))
+  for (const barrio of opcionesDe(enDatos, 'barrio')) nombres.add(barrio)
+  return [...nombres].sort((a, b) => a.localeCompare(b, 'es'))
 }
 
 /**

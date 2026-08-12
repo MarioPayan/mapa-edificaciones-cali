@@ -3,9 +3,10 @@ import { Select } from '@base-ui/react/select'
 import { Toggle } from '@base-ui/react/toggle'
 import { ToggleGroup } from '@base-ui/react/toggle-group'
 import {
+  barriosParaFiltro,
+  COMUNAS,
   ESTADOS,
   ETIQUETA_ESTADO,
-  opcionesDe,
   type Edificacion,
   type Estado,
   type Filtro,
@@ -66,12 +67,11 @@ export interface FiltroBarraProps {
  * por una lista de direcciones (R-08, R-10): la cuadrilla se sirve sola.
  */
 export function FiltroBarra({ edificaciones, filtro, onCambiar }: FiltroBarraProps) {
-  const comunas = opcionesDe(edificaciones, 'comuna')
-  // Los barrios se acotan a la comuna elegida: en Cali hay demasiados para una lista plana.
-  const barrios = opcionesDe(
-    filtro.comuna ? edificaciones.filter((e) => e.comuna === filtro.comuna) : edificaciones,
-    'barrio',
-  )
+  // Las 22 comunas de Cali, tengan o no reportes: una cuadrilla filtra por
+  // donde está, no por donde ya reportaron.
+  const comunas = [...COMUNAS]
+  // Los barrios se acotan a la comuna elegida: en Cali hay más de 360.
+  const barrios = barriosParaFiltro(edificaciones, filtro.comuna)
 
   return (
     <div className="d-filtros">
