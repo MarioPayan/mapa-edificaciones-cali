@@ -59,8 +59,12 @@ function validarEnvio(envio, cuadrillasValidas, codigosCoordinacion) {
   if (!texto(envio.uuid)) return 'falta_uuid'
   if (!texto(envio.edificacionId)) return 'falta_edificacion'
   if (!texto(envio.cuadrilla)) return 'falta_cuadrilla'
+  // Un código de coordinación vale como código de cuadrilla: obligar a
+  // apuntarlo en las dos pestañas era una trampa para quien monta la hoja —
+  // se apunta en `coordinacion` y todo se rechaza por «cuadrilla desconocida».
+  var reconocidos = (cuadrillasValidas || []).concat(codigosCoordinacion || [])
   if (cuadrillasValidas && cuadrillasValidas.length > 0) {
-    if (cuadrillasValidas.indexOf(texto(envio.cuadrilla)) === -1) return 'cuadrilla_no_reconocida'
+    if (reconocidos.indexOf(texto(envio.cuadrilla)) === -1) return 'cuadrilla_no_reconocida'
   }
 
   // Crear y fusionar cambian el universo de puntos: exigen código de coordinación.

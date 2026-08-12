@@ -124,6 +124,10 @@ de hecho. Difúndanla entre cuadrillas e instituciones, no en abierto.
   armado de jornada, reclamo, corrección de ubicación con GPS, caracterización, colapso, modo
   coordinación, trabajo sin señal y apertura sin red.
 - `pnpm e2e:desplegado <url>` — el mismo recorrido contra una URL ya publicada.
+- `pnpm bucle` — el recorrido completo **sin simulacros de respuesta**: la aplicación habla con el
+  `doPost` de verdad (el mismo código que se pega en Apps Script) sobre una hoja simulada, y lo que
+  muestra al refrescar sale del CSV que esa hoja produce. Es lo más cerca de la realidad que se
+  puede llegar sin una cuenta de Google.
 
 ## Despliegue
 

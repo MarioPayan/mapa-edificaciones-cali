@@ -19,7 +19,14 @@ Apps Script comparten ámbito global, así que `Codigo.gs` ve esas funciones sin
 | `edificaciones` | Maestra. Una fila por edificación, con la columna `id`. | Sí |
 | `log` | Auditoría: cada envío crudo, antes de decidir nada. La crea sola si falta. | Se crea sola |
 | `cuadrillas` | Códigos autorizados, uno por fila en la columna A. | No — sin ella no se exige código |
+| `coordinacion` | Códigos que además pueden crear edificaciones y fusionar duplicados. Cuentan también como cuadrilla: no hay que repetirlos en `cuadrillas`. | No — sin ella no se permite coordinar |
+| `reportes` | Respuestas del Form de residentes. La ingesta las normaliza hacia `edificaciones`. | Solo para CU-01 |
 | `publico` | Fórmula que excluye contacto, fotos y duplicados. Es la que se publica como CSV. | Sí, para el mapa |
+
+La fórmula de `publico` tiene que producir exactamente lo que
+`simulacro/entorno.js` (`proyectarPublico`) produce en las pruebas: todas las
+columnas menos `contacto_*`, `unidad_apto`, `fotos` y `uuid_envio`, y sin las
+filas que tengan `duplicado_de`.
 
 ## Despliegue
 
@@ -52,6 +59,18 @@ implementaciones → editar → versión nueva»). Guardar no basta.
 
 ## Pruebas
 
-`pnpm test` desde la raíz cubre `logica.js` (conflictos de reclamo, vencimiento a 4 h, recorte de
-texto, «varía» donde el formulario oficial exige un número). `Codigo.gs` no se prueba: es I/O contra
-Google y no hay forma honesta de simularlo sin montar un doble de toda la API.
+`simulacro/entorno.mjs` implementa la parte de la API de Apps Script que estos scripts usan
+—hojas, rangos, candado, `ContentService` y el geocodificador— y los evalúa dentro de Node en un
+único ámbito global, como hace Google. Con eso:
+
+- `src/logica.test.js` cubre las reglas puras (conflictos de reclamo, vencimiento a 4 h, recorte de
+  texto, «varía» donde el formulario oficial exige un número).
+- `src/servidor.test.js` **ejecuta `Codigo.gs` e `Ingesta.gs` de verdad** contra una hoja simulada:
+  escritura en la fila correcta, rechazos, candado ocupado, idempotencia, alta de edificaciones,
+  fusión de duplicados y la ingesta del Form con su geocodificador falso.
+- `pnpm bucle` (desde la raíz) cierra el círculo entero con un navegador real: la aplicación habla
+  con este mismo código a través de HTTP, escribe en la hoja simulada y lo que muestra al refrescar
+  sale del CSV que esa hoja produce.
+
+Lo que el simulacro **no** cubre, y solo se ve desplegando de verdad: cuotas y límites de Apps
+Script, permisos de la cuenta, el redirect 302 del web app y la latencia de publicación del CSV.
