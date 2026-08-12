@@ -44,6 +44,11 @@ body,
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
+  justify-content: flex-end;
+  /* Sin `min-width: 0` el bloque no se encoge: se desborda y el último botón
+     queda cortado fuera de la pantalla. */
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .a-marca-tiempo {

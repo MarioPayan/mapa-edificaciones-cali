@@ -18,12 +18,15 @@ export function CodigoCuadrilla({ cuadrilla, onCambiar }: CodigoCuadrillaProps) 
     return (
       <button
         className="d-cuadrilla"
+        // El texto es corto porque comparte fila con el título en 360 px; el
+        // nombre accesible sí dice qué hace.
+        aria-label={cuadrilla ? `Cuadrilla ${cuadrilla}, cambiar código` : 'Poner código de cuadrilla'}
         onClick={() => {
           setBorrador(cuadrilla)
           setEditando(true)
         }}
       >
-        {cuadrilla ? `Cuadrilla ${cuadrilla}` : 'Poner código de cuadrilla'}
+        {cuadrilla ? `Cuadrilla ${cuadrilla}` : 'Cuadrilla'}
       </button>
     )
   }
