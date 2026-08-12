@@ -233,7 +233,6 @@ const main = async () => {
       (f) => f.estado === 'NARANJA' && !f.reclamada_por && f.lat_reporte && !f.observaciones,
       'una pendiente libre y ubicada',
     ),
-    ajena: exigir((f) => f.estado === 'NARANJA' && f.reclamada_por, 'una reclamada por otra cuadrilla'),
     colapsada: exigir((f) => f.estado === 'ROJO' && f.rescatadas_en_sitio, 'una colapsada con rescatadas'),
     duplicada: exigir((f) => /fusionar/i.test(f.observaciones ?? ''), 'un reporte duplicado'),
   }
@@ -244,6 +243,7 @@ const main = async () => {
   objetivo.libre2 = libres[1] ?? objetivo.libre
   objetivo.libre3 = libres[2] ?? objetivo.libre
   objetivo.libre4 = libres[3] ?? objetivo.libre
+  objetivo.paraOtraCuadrilla = libres[4] ?? objetivo.libre
 
   console.log(`\nProbando ${BASE}${CON_ENDPOINT ? '' : ' (desplegado, modo práctica)'}`)
   console.log(`Datos: ${filas.length} edificaciones · objetivos ${Object.entries(objetivo).map(([k, v]) => `${k}=${v.id}`).join(' ')}\n`)
@@ -331,12 +331,20 @@ const main = async () => {
   comprobar('CU-04', 'la reclamada se distingue en el mapa sin ser un cuarto color', conAnillo >= 1,
     `${conAnillo} con anillo`)
 
-  await buscar(objetivo.ajena.id)
-  await pagina.locator('.leaflet-marker-icon').first().click()
-  await pagina.waitForSelector('.d-ficha')
+  // La situación se crea aquí en vez de leerla de los datos de ejemplo: un
+  // reclamo del CSV envejece y a las 4 h la aplicación lo muestra libre, que es
+  // justo lo que debe hacer.
+  await ponerCodigo('C-03')
+  await abrirPorBusqueda(objetivo.paraOtraCuadrilla.id)
+  await pagina.getByRole('button', { name: 'Reclamar', exact: true }).click()
+  await pagina.waitForTimeout(500)
+  await cerrarFicha()
+
+  await ponerCodigo('C-07')
+  await abrirPorBusqueda(objetivo.paraOtraCuadrilla.id)
   const ajena = (await pagina.locator('.d-ficha').textContent()) ?? ''
   comprobar('CU-04', 'una reclamada por otra cuadrilla no se puede tomar',
-    ajena.includes('Reclamada por otra') || ajena.includes('reclamada por'))
+    ajena.includes('Reclamada por otra') && ajena.includes('C-03'))
   await cerrarFicha()
 
   if (CON_ENDPOINT) {
