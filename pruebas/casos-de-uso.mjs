@@ -111,10 +111,21 @@ const main = async () => {
     await pagina.waitForTimeout(200)
   }
 
+  const verMapa = async () => {
+    await pagina.getByRole('button', { name: 'Mapa', exact: true }).click()
+    await pagina.waitForTimeout(300)
+  }
+
+  /**
+   * Abre la ficha desde la lista, no desde el mapa: un marcador puede quedar
+   * debajo del panel de coordinación y el click no llega. La lista siempre está.
+   */
   const abrirPorBusqueda = async (texto) => {
     await pagina.getByLabel('Buscar dirección o id').fill(texto)
     await pagina.waitForTimeout(400)
-    await pagina.locator('.leaflet-marker-icon').first().click()
+    await pagina.getByRole('button', { name: 'Lista', exact: true }).click()
+    await pagina.waitForSelector('.d-lista__fila')
+    await pagina.locator('.d-lista__principal').first().click()
     await pagina.waitForSelector('.d-ficha')
   }
 
@@ -273,8 +284,7 @@ const main = async () => {
 
   // ─────────────────────────────────────────────────────────────── CU-04
   console.log('CU-04 — Reclamar una edificación')
-  await pagina.getByRole('button', { name: 'Mapa' }).click()
-  await pagina.waitForTimeout(300)
+  await verMapa()
   const conAnillo = await pagina.locator('.d-marcador[data-reclamada="true"]').count()
   comprobar('CU-04', 'la reclamada se distingue en el mapa sin ser un cuarto color', conAnillo >= 1,
     `${conAnillo} con anillo`)
@@ -378,6 +388,7 @@ const main = async () => {
   const panel = (await pagina.locator('.d-coordinacion').textContent()) ?? ''
   comprobar('CU-11', 'lista los reportes sin ubicar', /sin ubicar/.test(panel))
 
+  await verMapa()
   const antesDeUbicarMapa = await pagina.locator('.leaflet-marker-icon').count()
   await pagina.locator('.d-coordinacion').getByRole('button', { name: 'Ubicar' }).first().click()
   await pagina.waitForSelector('.d-modo-punto')
@@ -400,6 +411,7 @@ const main = async () => {
   await pagina.waitForTimeout(700)
   await cerrarFicha()
   await pagina.getByLabel('Buscar dirección o id').fill('')
+  await verMapa()
   await pagina.waitForTimeout(400)
   const duplicadoFuera = await pagina
     .locator(`.leaflet-marker-icon[title*="${objetivo.duplicada.direccion_texto}"]`)
@@ -408,6 +420,7 @@ const main = async () => {
     `${antesDeFusionar} marcadores antes de fusionar`)
 
   // Crear una edificación que nadie reportó (CU-09, flujo principal 1).
+  await verMapa()
   await pagina.locator('.d-coordinacion').getByRole('button', { name: 'Crear edificación' }).click()
   await pagina.waitForSelector('.d-modo-punto')
   await tocarMapa(0.65, 0.45)

@@ -3,13 +3,19 @@
 html,
 body,
 #raiz {
-  height: 100%;
+  min-height: 100%;
 }
 
+/*
+ * Alto mínimo, no fijo: con el aviso de práctica y el panel de coordinación
+ * abiertos la suma de las franjas supera la pantalla, y con `height` fijo la
+ * parte de abajo quedaba fuera y sin forma de llegar a ella. Así, en el caso
+ * normal ocupa exactamente la pantalla y en el caso apretado se puede bajar.
+ */
 .a-pantalla {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  min-height: 100dvh;
 }
 
 .a-encabezado {
@@ -83,6 +89,7 @@ body,
    quedaba en una franja de 90 px. */
 .a-contenido {
   flex: 1 1 auto;
-  min-height: 180px;
+  /* El mapa nunca baja de media pantalla: es la herramienta, no un adorno. */
+  min-height: 45vh;
   overflow-y: auto;
 }
