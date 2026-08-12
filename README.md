@@ -8,10 +8,15 @@ Está hecho para una cuadrilla con un teléfono en la calle: sirve sin señal, s
 aplicación desde el navegador y no exige cuenta de nadie.
 
 **Publicado en <https://mariopayan.github.io/mapa-edificaciones-cali/>** — con datos de ejemplo y
-en modo práctica: se entra con una cuadrilla ya puesta y coordinación abierta, así que desde el
-primer toque se puede reclamar, ubicar con GPS, caracterizar, marcar colapsada, fusionar duplicados
-y crear puntos nuevos tocando el mapa. Nada sale del teléfono. Para operar de verdad hay que
-conectarlo a la hoja de la operación (ver más abajo).
+en modo práctica: se entra con una cuadrilla ya puesta, así que desde el primer toque se puede
+reclamar, ubicar con GPS, caracterizar, marcar colapsada, fusionar duplicados y crear puntos nuevos.
+Nada sale del teléfono. Para operar de verdad hay que conectarlo a la hoja de la operación (ver más
+abajo).
+
+En un teléfono el encabezado ocupa tres franjas cortas y el resto es mapa (~78 % del alto). Los
+contadores de arriba son además el filtro de estado; comuna, barrio y búsqueda están detrás de
+«Filtros»; la explicación de qué es esto, detrás del ícono ⓘ; y las herramientas de coordinación,
+detrás de su botón. Nada de eso ocupa alto mientras no se use.
 
 ## Qué problema resuelve
 

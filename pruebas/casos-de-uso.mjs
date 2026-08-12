@@ -121,21 +121,51 @@ const main = async () => {
    * debajo del panel de coordinación y el click no llega. La lista siempre está.
    */
   const abrirPorBusqueda = async (texto) => {
-    await pagina.getByLabel('Buscar dirección o id').fill(texto)
-    await pagina.waitForTimeout(400)
+    await buscar(texto)
     await pagina.getByRole('button', { name: 'Lista', exact: true }).click()
     await pagina.waitForSelector('.d-lista__fila')
     await pagina.locator('.d-lista__principal').first().click()
     await pagina.waitForSelector('.d-ficha')
   }
 
+  /** Los filtros de zona viven en un diálogo para no comerse el mapa. */
+  const abrirFiltros = async () => {
+    await pagina.getByRole('button', { name: /^Filtros/ }).click()
+    await pagina.waitForSelector('.d-filtros')
+  }
+
+  const cerrarFiltros = async () => {
+    await pagina.getByRole('button', { name: /^Ver \d+ edificaci/ }).click()
+    await pagina.waitForSelector('.d-filtros', { state: 'detached' })
+  }
+
+  const buscar = async (texto) => {
+    await abrirFiltros()
+    await pagina.getByLabel('Buscar dirección o id').fill(texto)
+    await cerrarFiltros()
+    await pagina.waitForTimeout(300)
+  }
+
+  /** El filtro de estado son los propios contadores. */
+  const contador = (etiqueta) => pagina.locator('.d-contadores button', { hasText: etiqueta })
+
+  const filtrarPorEstado = async (etiqueta, queremosActivo) => {
+    const boton = contador(etiqueta)
+    const activo = (await boton.getAttribute('aria-pressed')) === 'true'
+    if (activo !== queremosActivo) {
+      await boton.click()
+      await pagina.waitForTimeout(300)
+    }
+  }
+
   /** Deja los filtros como al abrir: los CU siguientes no heredan el estado. */
   const limpiarFiltros = async () => {
-    await pagina.getByLabel('Buscar dirección o id').fill('')
-    for (const estado of ['Colapsada', 'Por visitar', 'Visitada']) {
-      const boton = pagina.locator('.d-toggle-grupo button', { hasText: estado })
-      if ((await boton.getAttribute('data-pressed')) !== null) await boton.click()
+    for (const etiqueta of ['Colapsada', 'Por visitar', 'Visitada']) {
+      await filtrarPorEstado(etiqueta, false)
     }
+    await abrirFiltros()
+    await pagina.getByRole('button', { name: 'Quitar filtros' }).click()
+    await cerrarFiltros()
     await pagina.waitForTimeout(300)
   }
 
@@ -167,12 +197,10 @@ const main = async () => {
   }
 
   /** El panel de coordinación puede venir abierto (modo práctica) o cerrado. */
-  const coordinacion = async (queremosAbierto) => {
-    const abierto = (await pagina.locator('.d-coordinacion').count()) > 0
-    if (abierto !== queremosAbierto) {
-      await pagina.getByRole('button', { name: 'Coordinación' }).click()
-      await pagina.waitForTimeout(300)
-    }
+  /** Abre el diálogo de coordinación (y enciende el modo si estaba apagado). */
+  const abrirCoordinacion = async () => {
+    await pagina.getByRole('button', { name: 'Coordinación', exact: true }).click()
+    await pagina.waitForSelector('.d-coordinacion')
   }
 
   const cerrarFicha = async () => {
@@ -184,20 +212,20 @@ const main = async () => {
   // Los objetivos salen del CSV que sirve la aplicación, no de direcciones
   // escritas a mano: así los datos de ejemplo pueden cambiar sin romper esto.
   const filas = filasComoObjetos(await (await fetch(new URL('demo/edificaciones.csv', BASE))).text())
-  const buscar = (predicado, queEs) => {
+  const exigir = (predicado, queEs) => {
     const fila = filas.find(predicado)
     if (!fila) throw new Error(`Los datos de ejemplo no traen ${queEs}`)
     return fila
   }
   const objetivo = {
-    visitada: buscar((f) => f.estado === 'VERDE' && f.caracterizacion, 'una visitada con caracterización'),
-    libre: buscar(
+    visitada: exigir((f) => f.estado === 'VERDE' && f.caracterizacion, 'una visitada con caracterización'),
+    libre: exigir(
       (f) => f.estado === 'NARANJA' && !f.reclamada_por && f.lat_reporte && !f.observaciones,
       'una pendiente libre y ubicada',
     ),
-    ajena: buscar((f) => f.estado === 'NARANJA' && f.reclamada_por, 'una reclamada por otra cuadrilla'),
-    colapsada: buscar((f) => f.estado === 'ROJO' && f.rescatadas_en_sitio, 'una colapsada con rescatadas'),
-    duplicada: buscar((f) => /fusionar/i.test(f.observaciones ?? ''), 'un reporte duplicado'),
+    ajena: exigir((f) => f.estado === 'NARANJA' && f.reclamada_por, 'una reclamada por otra cuadrilla'),
+    colapsada: exigir((f) => f.estado === 'ROJO' && f.rescatadas_en_sitio, 'una colapsada con rescatadas'),
+    duplicada: exigir((f) => /fusionar/i.test(f.observaciones ?? ''), 'un reporte duplicado'),
   }
   // Otra pendiente libre distinta de la primera, para no pisar los pasos.
   const libres = filas.filter(
@@ -218,14 +246,19 @@ const main = async () => {
   comprobar('CU-02', 'el mapa pinta los puntos del CSV', totalMarcadores >= 10, `${totalMarcadores} marcadores`)
   comprobar('CU-02', 'hay contadores por estado', contadores.length >= 3, contadores.join('/'))
 
+  await abrirFiltros()
   await pagina.getByRole('combobox', { name: 'Todas las comunas' }).click()
   await pagina.waitForTimeout(250)
   const opcionesComuna = await pagina.locator('.d-select-item').allTextContents()
   await pagina.keyboard.press('Escape')
-  comprobar('CU-02', 'se puede filtrar por comuna', opcionesComuna.length >= 3, opcionesComuna.join(' '))
+  await cerrarFiltros()
+  comprobar('CU-02', 'se puede filtrar por las 22 comunas', opcionesComuna.length === 23,
+    `${opcionesComuna.length - 1} comunas`)
 
-  const alturaMapa = await pagina.locator('.d-mapa').boundingBox()
-  comprobar('CU-02', 'el mapa es lo que domina la pantalla', (alturaMapa?.height ?? 0) > 200)
+  const alturaMapa = (await pagina.locator('.d-mapa').boundingBox())?.height ?? 0
+  const alto = pagina.viewportSize()?.height ?? 1
+  comprobar('CU-02', 'el mapa se queda con la mayor parte de la pantalla',
+    alturaMapa / alto > 0.6, `${Math.round((100 * alturaMapa) / alto)}% del alto`)
 
   // ─────────────────────────────────────────────────────────────── CU-10
   console.log('CU-10 — Consultar la ficha de un punto')
@@ -262,9 +295,8 @@ const main = async () => {
   // ─────────────────────────────────────────────────────────────── CU-03
   console.log('CU-03 — La cuadrilla arma su jornada por sector')
   await ponerCodigo('C-07')
-  await pagina.getByRole('button', { name: 'Por visitar', exact: true }).click()
-  await pagina.waitForTimeout(300)
-  await pagina.getByRole('button', { name: 'Lista' }).click()
+  await filtrarPorEstado('Por visitar', true)
+  await pagina.getByRole('button', { name: 'Lista', exact: true }).click()
   await pagina.waitForSelector('.d-lista')
   const filasVisibles = await pagina.locator('.d-lista__fila').count()
   comprobar('CU-03', 'la lista muestra las pendientes del filtro', filasVisibles >= 4,
@@ -289,8 +321,7 @@ const main = async () => {
   comprobar('CU-04', 'la reclamada se distingue en el mapa sin ser un cuarto color', conAnillo >= 1,
     `${conAnillo} con anillo`)
 
-  await pagina.getByLabel('Buscar dirección o id').fill(objetivo.ajena.id)
-  await pagina.waitForTimeout(400)
+  await buscar(objetivo.ajena.id)
   await pagina.locator('.leaflet-marker-icon').first().click()
   await pagina.waitForSelector('.d-ficha')
   const ajena = (await pagina.locator('.d-ficha').textContent()) ?? ''
@@ -381,16 +412,17 @@ const main = async () => {
 
   // ─────────────────────────────────────────────────────────────── CU-11
   console.log('CU-11 — Coordinación ubica reportes y fusiona duplicados')
-  await pagina.getByLabel('Buscar dirección o id').fill('')
-  await pagina.waitForTimeout(200)
-  await coordinacion(true)
-  await pagina.waitForSelector('.d-coordinacion')
+  await buscar('')
+  await verMapa()
+  const antesDeUbicarMapa = await pagina.locator('.leaflet-marker-icon').count()
+
+  await abrirCoordinacion()
   const panel = (await pagina.locator('.d-coordinacion').textContent()) ?? ''
   comprobar('CU-11', 'lista los reportes sin ubicar', /sin ubicar/.test(panel))
 
-  await verMapa()
-  const antesDeUbicarMapa = await pagina.locator('.leaflet-marker-icon').count()
+  // Elegir «Ubicar» cierra el diálogo y deja el mapa esperando el toque.
   await pagina.locator('.d-coordinacion').getByRole('button', { name: 'Ubicar' }).first().click()
+  await pagina.waitForSelector('.d-coordinacion', { state: 'detached' })
   await pagina.waitForSelector('.d-modo-punto')
   comprobar('CU-11', 'pide tocar el mapa para ubicar',
     ((await pagina.locator('.d-modo-punto').textContent()) ?? '').includes('Toque dónde está'))
@@ -410,9 +442,8 @@ const main = async () => {
   await pagina.getByRole('button', { name: 'Fusionar' }).click()
   await pagina.waitForTimeout(700)
   await cerrarFicha()
-  await pagina.getByLabel('Buscar dirección o id').fill('')
+  await buscar('')
   await verMapa()
-  await pagina.waitForTimeout(400)
   const duplicadoFuera = await pagina
     .locator(`.leaflet-marker-icon[title*="${objetivo.duplicada.direccion_texto}"]`)
     .count()
@@ -420,7 +451,7 @@ const main = async () => {
     `${antesDeFusionar} marcadores antes de fusionar`)
 
   // Crear una edificación que nadie reportó (CU-09, flujo principal 1).
-  await verMapa()
+  await abrirCoordinacion()
   await pagina.locator('.d-coordinacion').getByRole('button', { name: 'Crear edificación' }).click()
   await pagina.waitForSelector('.d-modo-punto')
   await tocarMapa(0.65, 0.45)
@@ -440,7 +471,6 @@ const main = async () => {
   // ─────────────────────────────────────────────────────────────── CU-07
   if (CON_ENDPOINT) {
     console.log('CU-07 — Enviar sin señal (cola offline)')
-    await coordinacion(false)
     const enviadosAntes = recibidos.length
     sinSenal = true
     await contexto.setOffline(true)

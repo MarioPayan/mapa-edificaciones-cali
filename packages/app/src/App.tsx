@@ -15,6 +15,7 @@ import {
   Aviso,
   BarraCola,
   CodigoCuadrilla,
+  contarFiltrosDeZona,
   Contadores,
   FichaEdificacion,
   FiltroBarra,
@@ -96,6 +97,7 @@ export function App() {
     return guardado === null ? ES_PRACTICA : guardado === 'si'
   })
   const [modoPunto, setModoPunto] = useState<ModoPunto>(null)
+  const [panel, setPanel] = useState<'ninguno' | 'filtros' | 'ayuda' | 'coordinacion'>('ninguno')
   const [puntoCreacion, setPuntoCreacion] = useState<{ lat: number; lon: number } | null>(null)
   const [ubicando, setUbicando] = useState(false)
   const [errorUbicacion, setErrorUbicacion] = useState<string | null>(null)
@@ -107,23 +109,45 @@ export function App() {
     [edificaciones, aplicados, cola],
   )
   const visibles = useMemo(() => filtrar(conPendientes, filtro), [conPendientes, filtro])
+  // Los contadores ignoran el filtro de estado: si no, tocar «Colapsada» dejaría
+  // los otros dos en cero y ya no se sabría cuántas hay.
+  const visiblesSinEstado = useMemo(
+    () => filtrar(conPendientes, { ...filtro, estados: [] }),
+    [conPendientes, filtro],
+  )
+  const alternarEstado = useCallback(
+    (estado: (typeof filtro.estados)[number]) =>
+      setFiltro((previo) => ({
+        ...previo,
+        estados: previo.estados.includes(estado)
+          ? previo.estados.filter((e) => e !== estado)
+          : [...previo.estados, estado],
+      })),
+    [],
+  )
   const seleccionada = useMemo(
     () => conPendientes.find((e) => e.id === seleccionadaId) ?? null,
     [conPendientes, seleccionadaId],
   )
 
   const puedeEscribir = Boolean((URL_ENVIOS || ES_PRACTICA) && cuadrilla)
+  const filtrosDeZona = contarFiltrosDeZona(filtro)
 
   const guardarCuadrilla = useCallback((codigo: string) => {
     localStorage.setItem(CLAVE_CUADRILLA, codigo)
     setCuadrilla(codigo)
   }, [])
 
-  const alternarCoordinacion = useCallback(() => {
-    setCoordinacion((previo) => {
-      localStorage.setItem(CLAVE_COORDINACION, previo ? 'no' : 'si')
-      return !previo
-    })
+  const abrirCoordinacion = useCallback(() => {
+    localStorage.setItem(CLAVE_COORDINACION, 'si')
+    setCoordinacion(true)
+    setPanel('coordinacion')
+  }, [])
+
+  const salirDeCoordinacion = useCallback(() => {
+    localStorage.setItem(CLAVE_COORDINACION, 'no')
+    setCoordinacion(false)
+    setPanel('ninguno')
   }, [])
 
   const enviarSobre = useCallback(
@@ -228,18 +252,38 @@ export function App() {
             {(URL_ENVIOS || ES_PRACTICA) && (
               <CodigoCuadrilla cuadrilla={cuadrilla} onCambiar={guardarCuadrilla} />
             )}
-            <button className="d-boton" onClick={() => void recargar()} disabled={cargando}>
-              {cargando ? 'Actualizando…' : 'Actualizar'}
+            <button
+              className="d-boton d-boton--icono"
+              onClick={() => void recargar()}
+              disabled={cargando}
+              aria-label={
+                actualizadoEn
+                  ? `Actualizar. Datos de las ${horaCorta(actualizadoEn)}`
+                  : 'Actualizar'
+              }
+              title={actualizadoEn ? `Datos de las ${horaCorta(actualizadoEn)}` : 'Actualizar'}
+            >
+              {cargando ? '…' : '↻'}
+            </button>
+            {/* El aviso de práctica ocupaba seis líneas de mapa: ahora es un
+                ícono que lo cuenta cuando alguien pregunta. */}
+            <button
+              className="d-boton d-boton--icono"
+              onClick={() => setPanel('ayuda')}
+              aria-label="Qué es esto y cómo se usa"
+            >
+              ⓘ
             </button>
           </div>
         </div>
-        <Contadores edificaciones={visibles} />
-        <div className="a-encabezado__pie">
-          <p className="a-marca-tiempo">
-            {actualizadoEn
-              ? `Datos de las ${horaCorta(actualizadoEn)} · ${visibles.length} de ${conPendientes.length} edificaciones`
-              : 'Cargando información…'}
-          </p>
+
+        <Contadores
+          edificaciones={visiblesSinEstado}
+          estadosActivos={filtro.estados}
+          onAlternar={alternarEstado}
+        />
+
+        <div className="a-controles">
           <div className="a-vistas">
             <button
               className="d-boton"
@@ -255,12 +299,20 @@ export function App() {
             >
               Lista
             </button>
-            {puedeEscribir && (
-              <button className="d-boton" aria-pressed={coordinacion} onClick={alternarCoordinacion}>
-                Coordinación
-              </button>
-            )}
           </div>
+          <button
+            className="d-boton"
+            aria-pressed={filtrosDeZona > 0}
+            onClick={() => setPanel('filtros')}
+          >
+            Filtros
+            {filtrosDeZona > 0 && <span className="d-boton__insignia">{filtrosDeZona}</span>}
+          </button>
+          {puedeEscribir && (
+            <button className="d-boton" aria-pressed={coordinacion} onClick={abrirCoordinacion}>
+              Coordinación
+            </button>
+          )}
         </div>
       </header>
 
@@ -291,32 +343,14 @@ export function App() {
         </Aviso>
       )}
 
-      {ES_PRACTICA && (
-        <Aviso tono="info">
-          <strong>Modo práctica con datos de ejemplo.</strong> Toquen cualquier punto para
-          reclamarlo, ubicarlo con el GPS, caracterizarlo o marcarlo como colapsado; con
-          «Coordinación» abajo pueden además crear puntos nuevos tocando el mapa. Todo se queda en
-          este teléfono y no se envía a ninguna parte.
-        </Aviso>
-      )}
-
-      {ES_DEMO && !ES_PRACTICA && (
-        <Aviso tono="info">
-          Datos de demostración. Para usar la hoja real, definan <code>VITE_CSV_URL</code> con el
-          CSV publicado de la pestaña «publico».
-        </Aviso>
-      )}
-
-      {/* En práctica el aviso de arriba ya lo dice: dos franjas seguidas empujan
-          el mapa fuera de la pantalla en un teléfono. */}
+      {/* Solo lo que exige acción se queda ocupando pantalla; lo explicativo
+          vive detrás del ícono ⓘ. */}
       {URL_ENVIOS && !cuadrilla && (
         <Aviso tono="info">
           Pongan el código de su cuadrilla arriba para poder reclamar y caracterizar. Sin código, el
           mapa es de solo lectura.
         </Aviso>
       )}
-
-      <FiltroBarra edificaciones={conPendientes} filtro={filtro} onCambiar={setFiltro} />
 
       <main className="a-contenido">
         {vista === 'mapa' ? (
@@ -349,27 +383,99 @@ export function App() {
         )}
       </main>
 
-      {coordinacion && puedeEscribir && (
+      <Modal
+        abierto={panel === 'coordinacion'}
+        titulo="Coordinación"
+        onCerrar={() => setPanel('ninguno')}
+      >
         <PanelCoordinacion
           edificaciones={conPendientes}
           ubicando={modoPunto?.tipo === 'ubicar' ? modoPunto.edificacion : null}
-          onSeleccionar={(e: Edificacion) => setSeleccionadaId(e.id)}
+          onSeleccionar={(e: Edificacion) => {
+            setPanel('ninguno')
+            setSeleccionadaId(e.id)
+          }}
           onUbicar={(e: Edificacion) => {
+            // El diálogo se cierra solo: lo que sigue es tocar el mapa.
+            setPanel('ninguno')
             setVista('mapa')
             setModoPunto({ tipo: 'ubicar', edificacion: e })
           }}
           onCrear={() => {
+            setPanel('ninguno')
             setVista('mapa')
             setModoPunto({ tipo: 'crear' })
           }}
+          onSalir={salirDeCoordinacion}
         />
-      )}
+      </Modal>
 
       <FichaEdificacion
         edificacion={seleccionada}
         onCerrar={() => setSeleccionadaId(null)}
         {...(acciones ? { acciones } : {})}
       />
+
+      <Modal
+        abierto={panel === 'filtros'}
+        titulo="Filtros"
+        onCerrar={() => setPanel('ninguno')}
+      >
+        <FiltroBarra edificaciones={conPendientes} filtro={filtro} onCambiar={setFiltro} />
+        <div className="d-ficha__acciones" style={{ marginTop: 16 }}>
+          <button
+            className="d-boton"
+            onClick={() => setFiltro({ ...FILTRO_VACIO, estados: filtro.estados })}
+          >
+            Quitar filtros
+          </button>
+          <button className="d-boton d-boton--principal" onClick={() => setPanel('ninguno')}>
+            Ver {visibles.length} {visibles.length === 1 ? 'edificación' : 'edificaciones'}
+          </button>
+        </div>
+      </Modal>
+
+      <Modal abierto={panel === 'ayuda'} titulo="Cómo se usa" onCerrar={() => setPanel('ninguno')}>
+        <div className="a-ayuda">
+          {ES_PRACTICA && (
+            <p>
+              <strong>Modo práctica con datos de ejemplo.</strong> Todo lo que hagan se queda en
+              este teléfono y no se envía a ninguna parte.
+            </p>
+          )}
+          {ES_DEMO && !ES_PRACTICA && (
+            <p>
+              Datos de demostración. Para usar la hoja real hay que definir <code>VITE_CSV_URL</code>
+              con el CSV publicado de la pestaña «publico».
+            </p>
+          )}
+          <p>
+            Los colores son el estado de cada edificación: <strong>rojo</strong> colapsada,{' '}
+            <strong>naranja</strong> por visitar, <strong>verde</strong> ya visitada. Tocando los
+            contadores de arriba se filtra por estado.
+          </p>
+          <p>
+            Al tocar un punto se abre su ficha: ahí se reclama antes de salir, se toma el GPS
+            estando en la puerta («Estoy aquí»), se caracteriza la visita o se marca como
+            colapsada. Un reclamo se libera solo a las 4 horas.
+          </p>
+          <p>
+            Sin señal la aplicación sigue funcionando: lo capturado queda en una cola y se envía
+            cuando vuelve la red. Conviene abrir el sector del día con wifi antes de salir.
+          </p>
+          {puedeEscribir && (
+            <p>
+              Con <strong>Coordinación</strong> se ubican en el mapa los reportes sin dirección
+              utilizable, se fusionan duplicados y se crean edificaciones que nadie reportó.
+            </p>
+          )}
+          <p className="d-campo__ayuda">
+            {actualizadoEn
+              ? `Datos de las ${horaCorta(actualizadoEn)} · ${visibles.length} de ${conPendientes.length} edificaciones a la vista.`
+              : 'Cargando información…'}
+          </p>
+        </div>
+      </Modal>
 
       <Modal
         abierto={puntoCreacion !== null}

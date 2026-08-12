@@ -9,6 +9,8 @@ export interface PanelCoordinacionProps {
   onUbicar: (edificacion: Edificacion) => void
   onCrear: () => void
   onSeleccionar: (edificacion: Edificacion) => void
+  /** Apagar el modo. Vive aquí porque es donde se viene a coordinar. */
+  onSalir: () => void
 }
 
 /**
@@ -25,15 +27,18 @@ export function PanelCoordinacion({
   onUbicar,
   onCrear,
   onSeleccionar,
+  onSalir,
 }: PanelCoordinacionProps) {
   const perdidas = sinUbicar(edificaciones)
 
   return (
     <section className="d-coordinacion">
       <div className="d-coordinacion__cabecera">
-        <h2>Coordinación</h2>
-        <button className="d-boton" onClick={onCrear}>
+        <button className="d-boton d-boton--principal" onClick={onCrear}>
           Crear edificación
+        </button>
+        <button className="d-boton" onClick={onSalir}>
+          Salir de coordinación
         </button>
       </div>
 

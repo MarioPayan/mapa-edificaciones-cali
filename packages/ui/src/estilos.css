@@ -80,20 +80,49 @@ button {
 
 .d-contadores {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 6px;
   align-items: center;
+  /* Una sola línea: cada franja que se parte en dos es mapa que se pierde. */
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
 .d-contador {
   display: flex;
   align-items: baseline;
   gap: 5px;
+  flex: 0 0 auto;
   padding: 4px 9px;
   background: var(--papel);
   border: 1px solid var(--borde);
   border-left: 4px solid var(--borde);
   border-radius: var(--radio);
+  font: inherit;
+  cursor: pointer;
+}
+
+.d-contador--nota {
+  cursor: default;
+}
+
+/* Filtro de estado activo: el contador se pinta de su color. */
+.d-contador[aria-pressed='true'] {
+  color: #fff;
+  border-color: transparent;
+}
+
+.d-contador[aria-pressed='true'] .d-contador__etiqueta {
+  color: #fff;
+}
+
+.d-contador[aria-pressed='true'][data-estado='ROJO'] {
+  background: var(--rojo);
+}
+.d-contador[aria-pressed='true'][data-estado='NARANJA'] {
+  background: var(--naranja);
+}
+.d-contador[aria-pressed='true'][data-estado='VERDE'] {
+  background: var(--verde);
 }
 
 .d-contador[data-estado='ROJO'] {
@@ -122,22 +151,12 @@ button {
 .d-filtros {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 10px 12px;
-  background: var(--papel);
-  border-bottom: 1px solid var(--borde);
+  gap: 14px;
 }
 
-.d-filtros__fila {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.d-toggle-grupo {
-  display: flex;
-  gap: 6px;
+.d-filtros .d-select-trigger,
+.d-filtros .d-input {
+  width: 100%;
 }
 
 .d-toggle {
@@ -167,6 +186,26 @@ button {
 }
 .d-toggle[data-pressed][data-estado='VERDE'] {
   background: var(--verde);
+}
+
+/* Chip pequeño con el número de filtros puestos. */
+.d-boton__insignia {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--foco);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.d-boton[aria-pressed='true'] .d-boton__insignia {
+  background: #fff;
+  color: var(--foco);
 }
 
 .d-select-trigger,
@@ -236,10 +275,6 @@ button {
 .d-mapa {
   width: 100%;
   height: 100%;
-  /* Bajo, a propósito: con el aviso de práctica y el panel de coordinación
-     abiertos, un mínimo alto hacía que el mapa se saliera de su contenedor y
-     quedara media pantalla debajo del panel. */
-  min-height: 220px;
   background: var(--fondo);
 }
 
@@ -376,7 +411,7 @@ button {
 .d-lista__vacia,
 .d-coordinacion__vacio {
   margin: 0;
-  padding: 14px 12px;
+  padding: 10px 0;
   font-size: 14px;
   color: var(--tinta-suave);
   background: var(--papel);
@@ -384,31 +419,23 @@ button {
 
 /* ---------- Coordinación ---------- */
 
+/* Vive dentro de un diálogo: como franja fija se comía 38vh de mapa para una
+   lista que se consulta a ratos. */
 .d-coordinacion {
   display: flex;
   flex-direction: column;
-  /* Nunca más de media pantalla: el panel no puede comerse el mapa. */
-  flex: 0 1 auto;
-  max-height: 38vh;
-  min-height: 0;
-  overflow-y: auto;
-  background: var(--papel);
-  border-top: 3px solid var(--tinta);
+  gap: 8px;
 }
 
 .d-coordinacion__cabecera {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-.d-coordinacion__cabecera h2 {
-  margin: 0;
-  font-size: 15px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+.d-coordinacion .d-lista {
+  max-height: 45vh;
 }
 
 .d-leyenda {
@@ -524,6 +551,14 @@ button {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+/* Botón cuadrado para íconos: ocupa lo mínimo y sigue siendo tocable. */
+.d-boton--icono {
+  min-width: var(--tap);
+  padding: 0;
+  font-size: 18px;
+  line-height: 1;
 }
 
 .d-boton {
