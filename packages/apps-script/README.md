@@ -7,6 +7,8 @@ Es el **único** lugar donde algo se escribe: el mapa solo lee el CSV publicado.
 |---------|--------|
 | `src/logica.js` | Las reglas (validación, conflicto de reclamos, qué columna cambia). Sin dependencias y probado con vitest. |
 | `src/Codigo.gs` | El pegamento con Google: `doPost`, candado, `log`, búsqueda de la fila. |
+| `src/Ingesta.gs` | Trae los reportes del Form a `edificaciones` y los geocodifica (CU-01). |
+| `src/Instalar.gs` | Deja la hoja lista de una ejecución: pestañas, encabezados y la fórmula de `publico`. |
 
 `logica.js` termina con `if (typeof module !== 'undefined') module.exports = …`. En Node eso permite
 probarlo; en Apps Script `module` no existe y la línea no hace nada. Los archivos de un proyecto de
@@ -28,17 +30,30 @@ La fórmula de `publico` tiene que producir exactamente lo que
 columnas menos `contacto_*`, `unidad_apto`, `fotos` y `uuid_envio`, y sin las
 filas que tengan `duplicado_de`.
 
-## Despliegue
+## Puesta en marcha (unos 20 minutos)
 
-1. En la hoja: **Extensiones → Apps Script**.
-2. Crear dos archivos con el contenido de `src/logica.js` y `src/Codigo.gs` (los nombres dan igual;
-   el orden tampoco importa).
-3. **Implementar → Nueva implementación → Aplicación web**:
+1. Crear una hoja de cálculo nueva en la cuenta de la operación.
+2. **Extensiones → Apps Script**, y pegar los cuatro archivos de `src/` (los nombres dan igual; el
+   orden tampoco, porque comparten ámbito global).
+3. Elegir la función **`instalar`** y ejecutarla. Crea `edificaciones`, `log`, `cuadrillas`,
+   `coordinacion` y `publico` con sus encabezados, y **genera la fórmula de `publico`**. Se puede
+   volver a ejecutar cuantas veces se quiera: no pisa datos.
+4. Escribir los códigos en `cuadrillas` (uno por fila) y en `coordinacion` los de quien puede crear
+   y fusionar. Un código de coordinación cuenta también como cuadrilla.
+5. **Archivo → Compartir → Publicar en la web**: la pestaña **`publico`**, formato **CSV**. Ese
+   enlace es `VITE_CSV_URL`.
+6. **Implementar → Nueva implementación → Aplicación web**:
    - *Ejecutar como*: **yo** (la cuenta de la operación).
    - *Quién tiene acceso*: **cualquier usuario**. Hace falta para que el teléfono de una cuadrilla
      escriba sin iniciar sesión; por eso el código de cuadrilla es atribución, no seguridad.
-4. Copiar la URL `…/exec` y ponerla como `VITE_ENVIOS_URL` (variable del repositorio en GitHub, o
+7. Copiar la URL `…/exec`: es `VITE_ENVIOS_URL` (variable del repositorio en GitHub, o
    `packages/app/.env.local` en local).
+8. Para CU-01, enganchar el Form existente a la hoja y añadir un activador de `ingerirReportes` con
+   «Al enviar el formulario».
+
+La fórmula de `publico` se genera, no se teclea: es la que decide si los teléfonos de las familias
+salen o no a una página web, y equivocarse escribiendo letras de columna a mano es demasiado fácil.
+Hay una prueba que comprueba que esa fórmula no referencia ninguna columna de contacto.
 
 Al cambiar el código hay que **volver a implementar** (una implementación nueva o «gestionar
 implementaciones → editar → versión nueva»). Guardar no basta.

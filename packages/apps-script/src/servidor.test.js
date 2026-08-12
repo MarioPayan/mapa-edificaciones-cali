@@ -294,3 +294,48 @@ describe('ingerirReportes — CU-01', () => {
     })
   })
 })
+
+describe('instalar — dejar la hoja lista de una ejecución', () => {
+  it('crea todas las pestañas con su encabezado sobre un libro vacío', () => {
+    const vacio = crearEntorno({ hojas: {} })
+    vacio.instalar()
+    for (const nombre of ['edificaciones', 'log', 'cuadrillas', 'coordinacion', 'publico']) {
+      expect(vacio.libro.getSheetByName(nombre), nombre).not.toBeNull()
+    }
+    // El instalador y el simulacro tienen que hablar de la misma hoja: si una
+    // lista se mueve sin la otra, las pruebas dejarían de probar la realidad.
+    const encabezado = vacio.libro.getSheetByName('edificaciones').getDataRange().getValues()[0]
+    expect(encabezado).toEqual(COLUMNAS_EDIFICACIONES)
+  })
+
+  it('no pisa nada si se vuelve a ejecutar', () => {
+    const e = crearEntorno({ hojas: hojasBase() })
+    e.instalar()
+    const antes = e.libro.comoObjetos('edificaciones').length
+    e.instalar()
+    expect(e.libro.comoObjetos('edificaciones')).toHaveLength(antes)
+    expect(e.libro.comoObjetos('edificaciones')[0].id).toBe('D-0001')
+  })
+
+  it('la fórmula de `publico` no referencia ninguna columna de contacto', () => {
+    const e = crearEntorno({ hojas: {} })
+    e.instalar()
+    const publico = e.libro.getSheetByName('publico').getDataRange().getValues()
+    const encabezadoPublico = publico[0].filter(Boolean)
+    for (const privada of ['contacto_nombre', 'contacto_telefono', 'contacto_correo', 'unidad_apto', 'fotos', 'uuid_envio']) {
+      expect(encabezadoPublico, privada).not.toContain(privada)
+    }
+    expect(encabezadoPublico).toContain('id')
+    expect(encabezadoPublico).toContain('caracterizacion')
+  })
+
+  it('la fórmula excluye las filas marcadas como duplicadas', () => {
+    const e = crearEntorno({ hojas: {} })
+    e.instalar()
+    const formula = e.libro.getSheetByName('publico').getDataRange().getValues()[1][0]
+    expect(formula).toContain('FILTER(')
+    // `duplicado_de` es la columna Z en el orden actual; la condición debe estar.
+    expect(formula).toMatch(/edificaciones!([A-Z]+)2:\1=""\)/)
+    expect(formula).not.toContain('AA2:AA,')
+  })
+})

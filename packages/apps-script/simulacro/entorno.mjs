@@ -60,6 +60,18 @@ class HojaFalsa {
         hoja.#asegurar(fila, columna)
         hoja.filas[fila - 1][columna - 1] = valor
       },
+      setFormula(formula) {
+        hoja.#asegurar(fila, columna)
+        hoja.filas[fila - 1][columna - 1] = formula
+      },
+      setValues(matriz) {
+        matriz.forEach((f, i) =>
+          f.forEach((valor, c) => {
+            hoja.#asegurar(fila + i, columna + c)
+            hoja.filas[fila + i - 1][columna + c - 1] = valor
+          }),
+        )
+      },
       getValues() {
         const salida = []
         for (let f = 0; f < nFilas; f++) {
@@ -149,6 +161,8 @@ export function crearEntorno({ hojas = {}, geocodificar = () => null, candadoOcu
       }),
     },
 
+    Logger: { log: () => {} },
+
     ContentService: {
       MimeType: { JSON: 'application/json' },
       createTextOutput: (texto) => {
@@ -184,7 +198,7 @@ export function crearEntorno({ hojas = {}, geocodificar = () => null, candadoOcu
   }
 
   vm.createContext(contexto)
-  for (const archivo of ['logica.js', 'Codigo.gs', 'Ingesta.gs']) {
+  for (const archivo of ['logica.js', 'Codigo.gs', 'Ingesta.gs', 'Instalar.gs']) {
     vm.runInContext(readFileSync(join(FUENTE, archivo), 'utf8'), contexto, { filename: archivo })
   }
 
@@ -197,6 +211,7 @@ export function crearEntorno({ hojas = {}, geocodificar = () => null, candadoOcu
       return JSON.parse(salida.getContent())
     },
     ingerirReportes: () => contexto.ingerirReportes(),
+    instalar: () => contexto.instalar(),
   }
 }
 
@@ -208,7 +223,7 @@ export const COLUMNAS_EDIFICACIONES = [
   'apts_por_torre', 'ocupacion', 'caracterizacion', 'fallecidos_atrapados',
   'rescatadas_en_sitio', 'rescatadas_fuente', 'visitada_por', 'visitada_en',
   'observaciones', 'duplicado_de', 'contacto_nombre', 'contacto_telefono',
-  'contacto_correo', 'unidad_apto', 'uuid_envio',
+  'contacto_correo', 'unidad_apto', 'fotos', 'uuid_envio',
 ]
 
 /** Fila de `edificaciones` a partir de un objeto parcial. */
