@@ -7,6 +7,11 @@ en la visita.
 Está hecho para una cuadrilla con un teléfono en la calle: sirve sin señal, se instala como
 aplicación desde el navegador y no exige cuenta de nadie.
 
+**Publicado en <https://mariopayan.github.io/mapa-edificaciones-cali/>** — con datos de ejemplo y
+en modo práctica: se puede recorrer el flujo completo (reclamar, ubicar con GPS, caracterizar,
+marcar colapsada, coordinar) y nada sale del teléfono. Para operar de verdad hay que conectarlo a
+la hoja de la operación (ver más abajo).
+
 ## Qué problema resuelve
 
 En una emergencia, las visitas de evaluación se reparten a mano: alguien arma listas de direcciones
