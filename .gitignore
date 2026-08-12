@@ -1,0 +1,19 @@
+node_modules/
+dist/
+*.local
+.DS_Store
+
+# Material de origen (notas de voz, grabaciones de pantalla, fotogramas y su
+# transcripción): trae voces de personas reales, la dirección exacta de un
+# inmueble y datos de un formulario oficial. Este repositorio es público:
+# nada de eso se versiona.
+*.ogg
+*.mp4
+frames/
+transcripcion.md
+
+# El plan de implementación cita textualmente esas notas de voz, con la
+# dirección exacta de un inmueble y opiniones sobre instituciones concretas.
+# Se queda en local; lo esencial del porqué está en el README.
+PLAN.md
+pruebas/ultima-pantalla.png

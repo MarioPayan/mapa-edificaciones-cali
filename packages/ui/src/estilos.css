@@ -1,0 +1,700 @@
+/*
+ * Estilos de la herramienta. Diseño mobile-first y de alto contraste: se usa con
+ * el teléfono en la calle, a pleno sol y a veces con una mano. Sin modo oscuro
+ * a propósito — el trabajo de campo es de día.
+ */
+
+:root {
+  --rojo: #c62828;
+  --naranja: #e65100;
+  --verde: #2e7d32;
+
+  --tinta: #1a1a1a;
+  --tinta-suave: #5a5f66;
+  --papel: #ffffff;
+  --fondo: #f4f5f7;
+  --borde: #d6d9de;
+  --foco: #1565c0;
+
+  --radio: 10px;
+  /* Objetivo táctil mínimo: 44 px. Se usa con prisa y sin precisión. */
+  --tap: 44px;
+
+  --sombra: 0 2px 8px rgb(0 0 0 / 12%);
+  --fuente: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--fuente);
+  color: var(--tinta);
+  background: var(--fondo);
+  -webkit-text-size-adjust: 100%;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+:where(button, input, [role='combobox'], [role='option']):focus-visible {
+  outline: 3px solid var(--foco);
+  outline-offset: 2px;
+}
+
+/* ---------- Distintivo de estado ---------- */
+
+.d-estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 8px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.d-estado[data-estado='ROJO'] {
+  background: var(--rojo);
+}
+.d-estado[data-estado='NARANJA'] {
+  background: var(--naranja);
+}
+.d-estado[data-estado='VERDE'] {
+  background: var(--verde);
+}
+
+/* El símbolo acompaña al color: rojo y verde se confunden con daltonismo. */
+.d-estado__simbolo {
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* ---------- Contadores ---------- */
+
+.d-contadores {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.d-contador {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 4px 9px;
+  background: var(--papel);
+  border: 1px solid var(--borde);
+  border-left: 4px solid var(--borde);
+  border-radius: var(--radio);
+}
+
+.d-contador[data-estado='ROJO'] {
+  border-left-color: var(--rojo);
+}
+.d-contador[data-estado='NARANJA'] {
+  border-left-color: var(--naranja);
+}
+.d-contador[data-estado='VERDE'] {
+  border-left-color: var(--verde);
+}
+
+.d-contador__numero {
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.d-contador__etiqueta {
+  font-size: 12px;
+  color: var(--tinta-suave);
+}
+
+/* ---------- Barra de filtros ---------- */
+
+.d-filtros {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--papel);
+  border-bottom: 1px solid var(--borde);
+}
+
+.d-filtros__fila {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.d-toggle-grupo {
+  display: flex;
+  gap: 6px;
+}
+
+.d-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--tap);
+  padding: 0 14px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--papel);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.d-toggle[data-pressed] {
+  color: #fff;
+  border-color: transparent;
+}
+
+.d-toggle[data-pressed][data-estado='ROJO'] {
+  background: var(--rojo);
+}
+.d-toggle[data-pressed][data-estado='NARANJA'] {
+  background: var(--naranja);
+}
+.d-toggle[data-pressed][data-estado='VERDE'] {
+  background: var(--verde);
+}
+
+.d-select-trigger,
+.d-input {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: var(--tap);
+  min-width: 150px;
+  padding: 0 12px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--papel);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.d-input {
+  flex: 1 1 180px;
+  cursor: text;
+}
+
+/*
+ * El z-index va aquí, en el posicionador: es el elemento posicionado. Puesto en
+ * el popup no hacía nada y el desplegable quedaba detrás de los paneles de
+ * Leaflet (z-index 400–800), visible solo la parte que no cae sobre el mapa.
+ */
+.d-select-positioner {
+  z-index: 1100;
+}
+
+.d-select-popup {
+  min-width: var(--anchor-width, 150px);
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: 4px;
+  background: var(--papel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+}
+
+.d-select-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--tap);
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 15px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.d-select-item[data-highlighted] {
+  background: var(--fondo);
+}
+
+.d-select-item__indicador {
+  width: 16px;
+  color: var(--foco);
+}
+
+/* ---------- Mapa ---------- */
+
+.d-mapa {
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  background: var(--fondo);
+}
+
+.d-marcador {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 45%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.d-marcador[data-estado='ROJO'] {
+  background: var(--rojo);
+}
+.d-marcador[data-estado='NARANJA'] {
+  background: var(--naranja);
+}
+.d-marcador[data-estado='VERDE'] {
+  background: var(--verde);
+}
+
+.d-marcador[data-seleccionada='true'] {
+  outline: 3px solid var(--foco);
+  outline-offset: 2px;
+}
+
+/* Reclamada: anillo, no un cuarto color. El semáforo sigue siendo de tres. */
+.d-marcador[data-reclamada='true'] {
+  box-shadow:
+    0 0 0 3px #fff,
+    0 0 0 5px var(--tinta),
+    0 1px 4px rgb(0 0 0 / 45%);
+}
+
+.d-modo-punto > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.d-modo-punto {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 600;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  /* Una línea y a lo sumo la mitad del ancho: si crece, tapa el mapa que
+     justamente se está pidiendo tocar. */
+  max-width: calc(100% - 20px);
+  white-space: nowrap;
+  padding: 8px 12px;
+  background: var(--tinta);
+  color: #fff;
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+  font-size: 14px;
+}
+
+[data-modo-punto='true'] .leaflet-container {
+  cursor: crosshair;
+}
+
+/* ---------- Lista ---------- */
+
+.d-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  background: var(--papel);
+}
+
+.d-lista__fila {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--borde);
+}
+
+.d-lista__principal {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-height: var(--tap);
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.d-lista__texto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.d-lista__direccion {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.d-lista__sub {
+  font-size: 12px;
+  color: var(--tinta-suave);
+}
+
+.d-lista__mia {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--verde);
+  white-space: nowrap;
+}
+
+.d-lista__vacia,
+.d-coordinacion__vacio {
+  margin: 0;
+  padding: 14px 12px;
+  font-size: 14px;
+  color: var(--tinta-suave);
+  background: var(--papel);
+}
+
+/* ---------- Coordinación ---------- */
+
+.d-coordinacion {
+  display: flex;
+  flex-direction: column;
+  /* Nunca más de media pantalla: el panel no puede comerse el mapa. */
+  flex: 0 1 auto;
+  max-height: 45vh;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--papel);
+  border-top: 3px solid var(--tinta);
+}
+
+.d-coordinacion__cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.d-coordinacion__cabecera h2 {
+  margin: 0;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.d-leyenda {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  background: rgb(255 255 255 / 92%);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+  font-size: 12px;
+}
+
+/* ---------- Ficha ---------- */
+
+.d-ficha-fondo {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 45%);
+  z-index: 1200;
+}
+
+.d-ficha {
+  position: fixed;
+  z-index: 1201;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: min(560px, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 16px;
+  background: var(--papel);
+  border-radius: 16px 16px 0 0;
+  box-shadow: var(--sombra);
+}
+
+@media (min-width: 700px) {
+  .d-ficha {
+    top: 50%;
+    bottom: auto;
+    transform: translate(-50%, -50%);
+    border-radius: 16px;
+  }
+}
+
+.d-ficha__encabezado {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.d-ficha__direccion {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.3;
+}
+
+.d-ficha__sub {
+  margin: 0 0 12px;
+  color: var(--tinta-suave);
+  font-size: 14px;
+}
+
+.d-ficha__cerrar {
+  min-width: var(--tap);
+  min-height: var(--tap);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--papel);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.d-datos {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 14px;
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+
+.d-datos dt {
+  color: var(--tinta-suave);
+}
+
+.d-datos dd {
+  margin: 0;
+}
+
+.d-ficha__bloque {
+  margin-bottom: 12px;
+}
+
+.d-ficha__bloque h3 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--tinta-suave);
+}
+
+.d-ficha__texto {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.d-ficha__acciones {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.d-boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap);
+  padding: 0 16px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--papel);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.d-boton--principal {
+  background: var(--foco);
+  border-color: var(--foco);
+  color: #fff;
+}
+
+.d-boton--peligro {
+  background: var(--rojo);
+  border-color: var(--rojo);
+  color: #fff;
+}
+
+.d-boton[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- Formularios de campo ---------- */
+
+.d-formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.d-formulario__fila {
+  display: flex;
+  gap: 10px;
+}
+
+.d-formulario__fila > * {
+  flex: 1;
+}
+
+.d-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.d-campo__etiqueta {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.d-campo__ayuda {
+  font-size: 12px;
+  color: var(--tinta-suave);
+  line-height: 1.35;
+}
+
+.d-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  font: inherit;
+  font-size: 15px;
+  resize: vertical;
+}
+
+.d-radios {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.d-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--tap);
+  padding: 0 14px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.d-radio__control {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 2px solid var(--tinta-suave);
+  border-radius: 50%;
+  background: var(--papel);
+  cursor: pointer;
+}
+
+.d-radio__control[data-checked] {
+  border-color: var(--foco);
+}
+
+.d-radio__punto {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--foco);
+}
+
+/* ---------- Cola de envíos ---------- */
+
+.d-cola {
+  background: #fff8e1;
+  border-bottom: 1px solid var(--borde);
+}
+
+.d-cola__fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+}
+
+.d-cola__fila--rechazo {
+  background: #ffebee;
+}
+
+.d-cola__texto {
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.d-cuadrilla {
+  min-height: var(--tap);
+  padding: 0 12px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--papel);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.d-cuadrilla__forma {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ---------- Avisos ---------- */
+
+.d-aviso {
+  /* En bloque, no en flex: los avisos llevan <code> y <strong> en medio de la
+     frase y como ítems flex se separarían en columnas. */
+  display: block;
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.4;
+  border-left: 4px solid var(--tinta-suave);
+  background: #fff8e1;
+}
+
+.d-aviso[data-tono='error'] {
+  border-left-color: var(--rojo);
+  background: #ffebee;
+}
+
+.d-aviso[data-tono='info'] {
+  border-left-color: var(--foco);
+  background: #e3f2fd;
+}

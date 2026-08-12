@@ -1,0 +1,7 @@
+{
+  "name": "@dania/apps-script",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Único punto de escritura: web app de Google Apps Script sobre la hoja de la operación.",
+  "main": "./src/logica.js"
+}

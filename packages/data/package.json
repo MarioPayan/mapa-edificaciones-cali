@@ -1,0 +1,12 @@
+{
+  "name": "@dania/data",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Modelo, parseo del CSV publicado y filtros de las edificaciones. Sin dependencias, sin DOM.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts"
+}

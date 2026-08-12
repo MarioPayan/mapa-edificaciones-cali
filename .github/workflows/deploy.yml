@@ -1,0 +1,51 @@
+name: Desplegar mapa en GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Un solo despliegue a la vez; los empujones seguidos no se pisan.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  construir:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm build
+        env:
+          # Pages de proyecto sirve en /<repo>/. VITE_CSV_URL es una variable del
+          # repositorio (Settings → Variables): el CSV publicado de la pestaña
+          # `publico`, nunca el libro completo.
+          VITE_BASE: /${{ github.event.repository.name }}/
+          VITE_CSV_URL: ${{ vars.VITE_CSV_URL }}
+          # Web app de Apps Script. Sin ella el mapa queda de solo lectura.
+          VITE_ENVIOS_URL: ${{ vars.VITE_ENVIOS_URL }}
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: packages/app/dist
+
+  desplegar:
+    needs: construir
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.despliegue.outputs.page_url }}
+    steps:
+      - id: despliegue
+        uses: actions/deploy-pages@v4

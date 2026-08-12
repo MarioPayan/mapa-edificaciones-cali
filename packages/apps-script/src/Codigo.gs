@@ -1,0 +1,170 @@
+/**
+ * Único punto de escritura de la operación (PLAN.md §6).
+ *
+ * Recibe un envío desde el mapa, lo anexa crudo a `log` y solo después toca
+ * `edificaciones`. Si la lógica falla algún día, el `log` permite reconstruir:
+ * nunca se pierde lo que mandó una cuadrilla.
+ *
+ * Las reglas viven en `logica.js`, que en Apps Script comparte ámbito global.
+ */
+
+var HOJA_EDIFICACIONES = 'edificaciones'
+var HOJA_LOG = 'log'
+var HOJA_CUADRILLAS = 'cuadrillas'
+var HOJA_COORDINACION = 'coordinacion'
+
+function doPost(e) {
+  try {
+    // Cuerpo en text/plain a propósito: un JSON con Content-Type application/json
+    // dispara preflight OPTIONS, y un web app de Apps Script no responde OPTIONS.
+    var envio = JSON.parse((e && e.postData && e.postData.contents) || '{}')
+    return responder(procesar(envio))
+  } catch (error) {
+    return responder({ ok: false, error: 'error_interno', detalle: String(error) })
+  }
+}
+
+function procesar(envio) {
+  var libro = SpreadsheetApp.getActive()
+  registrarEnLog(libro, envio)
+
+  var problema = validarEnvio(
+    envio,
+    codigosDe(libro, HOJA_CUADRILLAS),
+    codigosDe(libro, HOJA_COORDINACION),
+  )
+  if (problema) return { ok: false, error: problema }
+
+  // Un solo escritor a la vez: dos cuadrillas pueden reclamar el mismo punto
+  // en el mismo segundo y la segunda debe ver el reclamo de la primera.
+  var candado = LockService.getScriptLock()
+  if (!candado.tryLock(15000)) return { ok: false, error: 'ocupado_reintente' }
+
+  try {
+    if (uuidYaAplicado(libro, envio.uuid)) {
+      // Reintento de la cola offline: ya estaba escrito. Éxito, sin volver a escribir.
+      return { ok: true, repetido: true }
+    }
+
+    var hoja = libro.getSheetByName(HOJA_EDIFICACIONES)
+    if (!hoja) return { ok: false, error: 'falta_hoja_edificaciones' }
+
+    var valores = hoja.getDataRange().getValues()
+    var encabezado = valores[0].map(normalizar)
+    var columnaId = encabezado.indexOf('id')
+    if (columnaId === -1) return { ok: false, error: 'falta_columna_id' }
+
+    var numeroFila = -1
+    for (var i = 1; i < valores.length; i++) {
+      if (String(valores[i][columnaId]).trim() === String(envio.edificacionId).trim()) {
+        numeroFila = i
+        break
+      }
+    }
+
+    if (envio.tipo === 'crear') {
+      if (numeroFila !== -1) return { ok: false, error: 'ya_existe' }
+      // Fila nueva solo con el id; los demás datos los pone `decidir`.
+      var filaNueva = new Array(encabezado.length).fill('')
+      filaNueva[columnaId] = String(envio.edificacionId).trim()
+      hoja.appendRow(filaNueva)
+      numeroFila = valores.length
+      valores.push(filaNueva)
+    } else if (numeroFila === -1) {
+      return { ok: false, error: 'edificacion_desconocida' }
+    }
+
+    var fila = {}
+    for (var c = 0; c < encabezado.length; c++) fila[encabezado[c]] = valores[numeroFila][c]
+
+    var decision = decidir(envio, fila, Date.now())
+    if (!decision.ok) return decision
+
+    escribirCambios(hoja, encabezado, numeroFila, decision.cambios, envio.uuid)
+    return { ok: true, edificacionId: envio.edificacionId, cambios: decision.cambios }
+  } finally {
+    candado.releaseLock()
+  }
+}
+
+function escribirCambios(hoja, encabezado, numeroFila, cambios, uuid) {
+  var conUuid = cambios
+  conUuid['uuid_envio'] = uuid
+  for (var columna in conUuid) {
+    var indice = encabezado.indexOf(columna)
+    // Una columna que la hoja no tiene se ignora: la hoja la edita gente y
+    // puede ir por detrás del cliente. Nunca se crean columnas al vuelo.
+    if (indice !== -1) {
+      hoja.getRange(numeroFila + 1, indice + 1).setValue(conUuid[columna])
+    }
+  }
+}
+
+/** Todo lo que llega, tal como llega, antes de cualquier decisión. */
+function registrarEnLog(libro, envio) {
+  var hoja = libro.getSheetByName(HOJA_LOG)
+  if (!hoja) {
+    hoja = libro.insertSheet(HOJA_LOG)
+    hoja.appendRow(['recibido_en', 'uuid', 'tipo', 'edificacion_id', 'cuadrilla', 'crudo'])
+  }
+  hoja.appendRow([
+    new Date().toISOString(),
+    String((envio && envio.uuid) || ''),
+    String((envio && envio.tipo) || ''),
+    String((envio && envio.edificacionId) || ''),
+    String((envio && envio.cuadrilla) || ''),
+    JSON.stringify(envio).slice(0, 40000),
+  ])
+}
+
+/**
+ * ¿Este uuid ya se escribió? Se pregunta al `log`, no a `edificaciones`:
+ * la fila solo guarda el último uuid y varios envíos tocan la misma fila.
+ */
+function uuidYaAplicado(libro, uuid) {
+  var hoja = libro.getSheetByName(HOJA_LOG)
+  if (!hoja) return false
+  var filas = hoja.getDataRange().getValues()
+  var vistos = 0
+  for (var i = 1; i < filas.length; i++) {
+    if (String(filas[i][1]) === String(uuid)) vistos++
+    // El propio envío ya quedó registrado arriba; dos apariciones = reintento.
+    if (vistos > 1) return true
+  }
+  return false
+}
+
+/**
+ * Códigos listados en la columna A de una pestaña.
+ * Sin pestaña `cuadrillas` no se exige código de cuadrilla; sin pestaña
+ * `coordinacion` no se permite ninguna acción de coordinación.
+ */
+function codigosDe(libro, nombreHoja) {
+  var hoja = libro.getSheetByName(nombreHoja)
+  if (!hoja) return []
+  return hoja
+    .getRange(1, 1, Math.max(hoja.getLastRow(), 1), 1)
+    .getValues()
+    .map(function (f) {
+      return String(f[0]).trim()
+    })
+    .filter(function (v) {
+      return v && v.toLowerCase() !== 'codigo'
+    })
+}
+
+function normalizar(encabezado) {
+  return String(encabezado)
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+}
+
+function responder(cuerpo) {
+  return ContentService.createTextOutput(JSON.stringify(cuerpo)).setMimeType(
+    ContentService.MimeType.JSON,
+  )
+}

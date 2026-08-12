@@ -1,0 +1,25 @@
+{
+  "name": "dania",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.31.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @dania/app dev",
+    "build": "pnpm --filter @dania/app build",
+    "preview": "pnpm --filter @dania/app preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "check": "pnpm typecheck && pnpm test",
+    "e2e": "pnpm build && node pruebas/casos-de-uso.mjs",
+    "e2e:desplegado": "node pruebas/casos-de-uso.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.62.1",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}

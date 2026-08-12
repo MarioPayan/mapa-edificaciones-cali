@@ -1,0 +1,77 @@
+/* Composición de la pantalla. Los estilos de los componentes viven en @dania/ui. */
+
+html,
+body,
+#raiz {
+  height: 100%;
+}
+
+.a-pantalla {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+.a-encabezado {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  padding-top: max(10px, env(safe-area-inset-top));
+  background: var(--papel);
+  border-bottom: 1px solid var(--borde);
+}
+
+.a-encabezado__titulo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.a-encabezado h1 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.a-encabezado__acciones {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.a-marca-tiempo {
+  margin: 0;
+  font-size: 13px;
+  color: var(--tinta-suave);
+}
+
+
+.a-encabezado__pie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.a-vistas {
+  display: flex;
+  gap: 6px;
+}
+
+/* Botón de vista activa: el mismo estilo que un toggle presionado. */
+.a-vistas .d-boton[aria-pressed='true'] {
+  background: var(--foco);
+  border-color: var(--foco);
+  color: #fff;
+}
+
+/* El contenido (mapa o lista) se queda con todo el alto que sobre, pero nunca
+   baja de un mínimo utilizable: con el panel de coordinación abierto el mapa
+   quedaba en una franja de 90 px. */
+.a-contenido {
+  flex: 1 1 auto;
+  min-height: 180px;
+  overflow-y: auto;
+}

@@ -1,0 +1,220 @@
+import { estaUbicada, type Edificacion, type Estado } from './tipos.ts'
+
+/**
+ * Un envío es una intención de cambio hecha en campo: reclamar, ubicar,
+ * caracterizar, marcar colapsada o liberar.
+ *
+ * Se guarda en el teléfono y se manda cuando haya señal. La autoridad sobre si
+ * el cambio procede es del `doPost` (valida contra la hoja en el momento de
+ * escribir); aquí solo se modela para poder encolarlo y para pintar el cambio
+ * de inmediato mientras llega.
+ */
+export type TipoEnvio =
+  | 'reclamar'
+  | 'liberar'
+  | 'ubicar'
+  | 'caracterizar'
+  | 'colapsar'
+  // Solo coordinación (el script exige un código de la pestaña `coordinacion`):
+  | 'crear'
+  | 'duplicar'
+
+export interface DatosCaracterizar {
+  caracterizacion: string
+  tipoEdificacion: string
+  numTorres: number | null
+  aptsPorTorre: number | null
+  /** Texto libre: «varía» es una respuesta válida (R-05). */
+  ocupacion: string
+  fallecidosAtrapados: string
+  observaciones: string
+}
+
+export interface DatosUbicar {
+  lat: number
+  lon: number
+  /** Precisión del GPS en metros, tal como la reporta el navegador. */
+  exactitudM: number | null
+  /** Referencia opcional escrita en la puerta: «torre B, entrada por la 58N». */
+  referencia?: string
+  /** La ubicación la puso coordinación tocando el mapa, no un GPS en sitio. */
+  manual?: boolean
+}
+
+/** Coordinación crea una edificación que nadie reportó (CU-09: un colapso sin reporte previo). */
+export interface DatosCrear {
+  direccionTexto: string
+  barrio: string
+  comuna: string
+  lat: number
+  lon: number
+  estado: Estado
+}
+
+/** Coordinación marca un reporte como duplicado de otro (CU-11). */
+export interface DatosDuplicar {
+  duplicadoDe: string
+}
+
+export interface DatosColapsar {
+  rescatadasEnSitio: number | null
+  rescatadasFuente: string
+  fallecidosAtrapados: string
+}
+
+export interface Envio {
+  /** Idempotencia: el script ignora un uuid que ya escribió. */
+  uuid: string
+  tipo: TipoEnvio
+  /** Id de la edificación afectada. */
+  edificacionId: string
+  /** Código de cuadrilla. Atribución, no seguridad. */
+  cuadrilla: string
+  /** Hora del dispositivo al capturar. Es cuándo pasó, no cuándo se envió. */
+  creadoEn: string
+  datos?: DatosCaracterizar | DatosUbicar | DatosColapsar | DatosCrear | DatosDuplicar
+}
+
+export function nuevoUuid(): string {
+  // crypto.randomUUID existe en todo navegador con service worker; el respaldo
+  // es para entornos de prueba sin crypto.
+  return globalThis.crypto?.randomUUID?.() ?? `u-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+export function crearEnvio(
+  tipo: TipoEnvio,
+  edificacionId: string,
+  cuadrilla: string,
+  datos?: Envio['datos'],
+): Envio {
+  return {
+    uuid: nuevoUuid(),
+    tipo,
+    edificacionId,
+    cuadrilla,
+    creadoEn: new Date().toISOString(),
+    ...(datos ? { datos } : {}),
+  }
+}
+
+/**
+ * Pinta sobre las edificaciones los envíos que aún están en la cola.
+ *
+ * Sin esto, una cuadrilla sin señal reclama y no ve pasar nada — y vuelve a
+ * reclamar. El resultado es optimista a propósito: si el servidor rechaza el
+ * cambio, el siguiente refresco del CSV lo corrige.
+ */
+export function aplicarEnvios(edificaciones: Edificacion[], envios: Envio[]): Edificacion[] {
+  if (envios.length === 0) return edificaciones
+  const porId = new Map<string, Envio[]>()
+  for (const envio of envios) {
+    const lista = porId.get(envio.edificacionId)
+    if (lista) lista.push(envio)
+    else porId.set(envio.edificacionId, [envio])
+  }
+
+  const existentes = edificaciones.map((e) => {
+    const pendientes = porId.get(e.id)
+    return pendientes ? pendientes.reduce(aplicarEnvio, e) : e
+  })
+
+  // Las creadas por coordinación aún no están en el CSV: se agregan aparte para
+  // que se vean en el mapa desde el momento en que se crean.
+  const yaEsta = new Set(edificaciones.map((e) => e.id))
+  const creadas = envios
+    .filter((envio) => envio.tipo === 'crear' && !yaEsta.has(envio.edificacionId))
+    .map((envio) => nuevaEdificacion(envio))
+
+  return creadas.length > 0 ? [...existentes, ...creadas] : existentes
+}
+
+/** Edificación en blanco a partir de un envío `crear`. */
+function nuevaEdificacion(envio: Envio): Edificacion {
+  const d = envio.datos as DatosCrear
+  return {
+    id: envio.edificacionId,
+    creadoEn: envio.creadoEn,
+    origen: 'coordinacion',
+    direccionTexto: d.direccionTexto,
+    barrio: d.barrio,
+    comuna: d.comuna,
+    lat: d.lat,
+    lon: d.lon,
+    precision: 'manual',
+    estado: d.estado,
+    reclamadaPor: '',
+    reclamadaEn: '',
+    tipoEdificacion: '',
+    numTorres: null,
+    aptsPorTorre: null,
+    ocupacion: '',
+    caracterizacion: '',
+    fallecidosAtrapados: '',
+    rescatadasEnSitio: null,
+    rescatadasFuente: '',
+    visitadaPor: '',
+    visitadaEn: '',
+    observaciones: '',
+    duplicadoDe: '',
+  }
+}
+
+function aplicarEnvio(e: Edificacion, envio: Envio): Edificacion {
+  switch (envio.tipo) {
+    case 'reclamar':
+      return { ...e, reclamadaPor: envio.cuadrilla, reclamadaEn: envio.creadoEn }
+    case 'liberar':
+      return { ...e, reclamadaPor: '', reclamadaEn: '' }
+    case 'ubicar': {
+      const d = envio.datos as DatosUbicar
+      return {
+        ...e,
+        lat: d.lat,
+        lon: d.lon,
+        precision: d.manual ? 'manual' : 'visita',
+        observaciones: d.referencia ? `${e.observaciones} ${d.referencia}`.trim() : e.observaciones,
+      }
+    }
+
+    case 'crear':
+      return e
+
+    case 'duplicar':
+      return { ...e, duplicadoDe: (envio.datos as DatosDuplicar).duplicadoDe }
+    case 'caracterizar': {
+      const d = envio.datos as DatosCaracterizar
+      return {
+        ...e,
+        estado: 'VERDE',
+        visitadaPor: envio.cuadrilla,
+        visitadaEn: envio.creadoEn,
+        reclamadaPor: '',
+        reclamadaEn: '',
+        caracterizacion: d.caracterizacion,
+        tipoEdificacion: d.tipoEdificacion,
+        numTorres: d.numTorres,
+        aptsPorTorre: d.aptsPorTorre,
+        ocupacion: d.ocupacion,
+        fallecidosAtrapados: d.fallecidosAtrapados,
+        observaciones: d.observaciones,
+      }
+    }
+    case 'colapsar': {
+      const d = envio.datos as DatosColapsar
+      return {
+        ...e,
+        estado: 'ROJO',
+        visitadaPor: envio.cuadrilla,
+        visitadaEn: envio.creadoEn,
+        rescatadasEnSitio: d.rescatadasEnSitio,
+        rescatadasFuente: d.rescatadasFuente,
+        fallecidosAtrapados: d.fallecidosAtrapados,
+      }
+    }
+  }
+}
+
+/** ¿Tiene sentido pedir la ubicación GPS? Solo si aún no la tomó una cuadrilla. */
+export function necesitaUbicacion(e: Edificacion): boolean {
+  return e.precision !== 'visita' || !estaUbicada(e)
+}
