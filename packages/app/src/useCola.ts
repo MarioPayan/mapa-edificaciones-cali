@@ -2,6 +2,7 @@ import type { Envio } from '@dania/data'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   aplicarLocalmente,
+  borrarTodoLoLocal,
   encolar,
   enviarCola,
   guardarAplicados,
@@ -89,6 +90,14 @@ export function useCola(urlEnvios: string, practica = false) {
     [enviar, practica],
   )
 
+  /** Vuelve al punto de partida: se usa para reiniciar la práctica. */
+  const borrarLoLocal = useCallback(async () => {
+    await borrarTodoLoLocal()
+    setCola([])
+    setAplicados([])
+    setRechazos([])
+  }, [])
+
   const descartarRechazos = useCallback(async () => {
     await guardarRechazos([])
     setRechazos([])
@@ -125,5 +134,15 @@ export function useCola(urlEnvios: string, practica = false) {
     }
   }, [enviar, practica])
 
-  return { cola, aplicados, rechazos, enviando, hayRed, agregar, enviar, descartarRechazos }
+  return {
+    cola,
+    aplicados,
+    rechazos,
+    enviando,
+    hayRed,
+    agregar,
+    enviar,
+    descartarRechazos,
+    borrarLoLocal,
+  }
 }

@@ -1,5 +1,5 @@
 /**
- * Recorre los casos de uso de PLAN.md §3 contra la aplicación ya construida.
+ * Recorre los casos de uso del plan (CU-01…CU-11) contra la aplicación construida.
  *
  * Levanta `vite preview` sobre `packages/app/dist`, simula el `doPost` con una
  * ruta interceptada y ejecuta cada CU como lo haría una persona. Al final
@@ -559,6 +559,23 @@ const main = async () => {
 
   await pagina.goto(BASE, { waitUntil: 'networkidle' })
   await pagina.waitForSelector('.d-marcador')
+
+  // ────────────────────────────── Volver al ejemplo limpio tras la práctica
+  if (!CON_ENDPOINT) {
+    console.log('Práctica — poder deshacer lo que uno probó')
+    await pagina.getByRole('button', { name: 'Qué es esto y cómo se usa' }).click()
+    await pagina.waitForSelector('.d-ficha')
+    const borrar = pagina.getByRole('button', { name: /^Borrar mis cambios/ })
+    comprobar('Práctica', 'ofrece borrar lo que uno hizo probando', (await borrar.count()) > 0)
+    if (await borrar.count()) {
+      const antes = await pagina.locator('.d-contador__numero').first().textContent()
+      await borrar.click()
+      await pagina.waitForTimeout(600)
+      const despues = await pagina.locator('.d-contador__numero').first().textContent()
+      comprobar('Práctica', 'y al borrarlos el mapa vuelve al ejemplo', antes !== despues,
+        `${antes} → ${despues}`)
+    }
+  }
 
   // ─────────────────────────────────────────────── PWA / sin señal al abrir
   console.log('PWA — abrir sin señal')

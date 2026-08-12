@@ -90,8 +90,17 @@ export function App() {
 
   const { edificaciones, columnasProhibidas, cargando, error, actualizadoEn, recargar } =
     useEdificaciones(URL_CSV)
-  const { cola, aplicados, rechazos, enviando, hayRed, agregar, enviar, descartarRechazos } =
-    useCola(URL_ENVIOS, ES_PRACTICA)
+  const {
+    cola,
+    aplicados,
+    rechazos,
+    enviando,
+    hayRed,
+    agregar,
+    enviar,
+    descartarRechazos,
+    borrarLoLocal,
+  } = useCola(URL_ENVIOS, ES_PRACTICA)
 
   const conectar = useCallback((datos: Propuesta) => {
     guardarConfiguracion(datos)
@@ -502,6 +511,17 @@ export function App() {
             <button className="d-boton" onClick={() => setPanel('conexion')}>
               {ES_DEMO ? 'Conectar una hoja' : 'Hoja conectada'}
             </button>
+            {ES_PRACTICA && aplicados.length > 0 && (
+              <button
+                className="d-boton"
+                onClick={() => {
+                  void borrarLoLocal()
+                  setPanel('ninguno')
+                }}
+              >
+                Borrar mis cambios ({aplicados.length})
+              </button>
+            )}
           </div>
         </div>
       </Modal>

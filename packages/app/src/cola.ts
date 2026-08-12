@@ -84,6 +84,20 @@ export function aplicarLocalmente(envio: Envio): Promise<Envio[]> {
   })
 }
 
+/**
+ * Borra todo lo capturado en este teléfono: cola, rechazos y lo aplicado en
+ * práctica. Sirve para volver al ejemplo limpio después de jugar con la
+ * demostración; sin esto, quien la prueba se queda con sus propios cambios
+ * encima para siempre y sin manera de deshacerlos.
+ */
+export function borrarTodoLoLocal(): Promise<void> {
+  return enSerie(async () => {
+    await set(CLAVE_COLA, [])
+    await set(CLAVE_RECHAZOS, [])
+    await set(CLAVE_APLICADOS, [])
+  })
+}
+
 export function guardarAplicados(aplicados: Envio[]): Promise<Envio[]> {
   return enSerie(async () => {
     await set(CLAVE_APLICADOS, aplicados)
