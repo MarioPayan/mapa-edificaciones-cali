@@ -26,18 +26,24 @@ body,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
+  /* En 360–390 px el título y los dos botones no caben en una línea: antes de
+     recortar «Actualizar», que baje a la siguiente. */
+  flex-wrap: wrap;
 }
 
 .a-encabezado h1 {
   margin: 0;
   font-size: 18px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .a-encabezado__acciones {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .a-marca-tiempo {

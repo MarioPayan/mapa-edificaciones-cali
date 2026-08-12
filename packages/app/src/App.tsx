@@ -285,6 +285,7 @@ export function App() {
           <strong>Modo práctica con datos de ejemplo.</strong> Pueden reclamar, ubicar y
           caracterizar para aprender el flujo: los cambios se quedan en este teléfono y no se envían
           a ninguna parte.
+          {!cuadrilla && ' Empiecen poniendo el código de su cuadrilla arriba.'}
         </Aviso>
       )}
 
@@ -295,7 +296,9 @@ export function App() {
         </Aviso>
       )}
 
-      {(URL_ENVIOS || ES_PRACTICA) && !cuadrilla && (
+      {/* En práctica el aviso de arriba ya lo dice: dos franjas seguidas empujan
+          el mapa fuera de la pantalla en un teléfono. */}
+      {URL_ENVIOS && !cuadrilla && (
         <Aviso tono="info">
           Pongan el código de su cuadrilla arriba para poder reclamar y caracterizar. Sin código, el
           mapa es de solo lectura.
