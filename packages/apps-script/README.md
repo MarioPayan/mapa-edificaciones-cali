@@ -40,8 +40,11 @@ implementaciones → editar → versión nueva»). Guardar no basta.
 
 - **`text/plain`, no `application/json`.** Un `Content-Type: application/json` dispara un preflight
   `OPTIONS` que Apps Script no responde. El cliente manda JSON como texto plano a propósito.
-- **Idempotencia por `uuid`.** El reintento de la cola offline no duplica: si el uuid ya está en
-  `log`, se responde `ok` sin volver a escribir.
+- **Idempotencia por `uuid`.** El reintento de la cola offline no duplica: si el uuid ya figura en
+  `log` **como aplicado**, se responde `ok` sin volver a escribir. Se pregunta por lo aplicado y no
+  por lo recibido a propósito: dos reintentos simultáneos se registran ambos antes de que ninguno
+  tome el candado, y contando recibidos los dos se creerían repetidos — el cambio no se escribiría
+  nunca y la cuadrilla lo daría por enviado.
 - **Candado.** `LockService` serializa las escrituras; sin él, dos reclamos simultáneos se pisan.
 - **El `log` se escribe siempre**, incluso si el envío se rechaza. Es la red de seguridad.
 - **Nunca se crean columnas.** Si la hoja no tiene una columna, ese dato se ignora en silencio en

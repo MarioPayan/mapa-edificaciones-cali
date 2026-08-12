@@ -26,7 +26,9 @@ function doPost(e) {
 
 function procesar(envio) {
   var libro = SpreadsheetApp.getActive()
-  registrarEnLog(libro, envio)
+  // Se registra todo lo que llega, incluso lo que se va a rechazar: el `log` es
+  // la red de seguridad y no depende de que la lógica acierte.
+  var filaLog = registrarEnLog(libro, envio)
 
   var problema = validarEnvio(
     envio,
@@ -41,8 +43,11 @@ function procesar(envio) {
   if (!candado.tryLock(15000)) return { ok: false, error: 'ocupado_reintente' }
 
   try {
+    // Se pregunta por lo APLICADO, no por lo recibido. Dos reintentos del mismo
+    // uuid que llegan a la vez se registran los dos antes de que ninguno tome el
+    // candado: contando recibidos, ambos se creerían repetidos y el cambio no se
+    // escribiría nunca — y la cuadrilla ya lo habría dado por enviado.
     if (uuidYaAplicado(libro, envio.uuid)) {
-      // Reintento de la cola offline: ya estaba escrito. Éxito, sin volver a escribir.
       return { ok: true, repetido: true }
     }
 
@@ -81,6 +86,7 @@ function procesar(envio) {
     if (!decision.ok) return decision
 
     escribirCambios(hoja, encabezado, numeroFila, decision.cambios, envio.uuid)
+    marcarAplicado(libro, filaLog)
     return { ok: true, edificacionId: envio.edificacionId, cambios: decision.cambios }
   } finally {
     candado.releaseLock()
@@ -100,12 +106,23 @@ function escribirCambios(hoja, encabezado, numeroFila, cambios, uuid) {
   }
 }
 
+/** Columna del `log` donde se marca que el envío llegó a escribirse. */
+var COLUMNA_APLICADO = 7
+
 /** Todo lo que llega, tal como llega, antes de cualquier decisión. */
 function registrarEnLog(libro, envio) {
   var hoja = libro.getSheetByName(HOJA_LOG)
   if (!hoja) {
     hoja = libro.insertSheet(HOJA_LOG)
-    hoja.appendRow(['recibido_en', 'uuid', 'tipo', 'edificacion_id', 'cuadrilla', 'crudo'])
+    hoja.appendRow([
+      'recibido_en',
+      'uuid',
+      'tipo',
+      'edificacion_id',
+      'cuadrilla',
+      'crudo',
+      'aplicado',
+    ])
   }
   hoja.appendRow([
     new Date().toISOString(),
@@ -114,22 +131,32 @@ function registrarEnLog(libro, envio) {
     String((envio && envio.edificacionId) || ''),
     String((envio && envio.cuadrilla) || ''),
     JSON.stringify(envio).slice(0, 40000),
+    '',
   ])
+  return hoja.getLastRow()
+}
+
+/** Deja constancia de que este envío sí modificó la hoja. */
+function marcarAplicado(libro, filaLog) {
+  var hoja = libro.getSheetByName(HOJA_LOG)
+  if (hoja && filaLog) hoja.getRange(filaLog, COLUMNA_APLICADO).setValue('si')
 }
 
 /**
- * ¿Este uuid ya se escribió? Se pregunta al `log`, no a `edificaciones`:
- * la fila solo guarda el último uuid y varios envíos tocan la misma fila.
+ * ¿Este uuid ya se ESCRIBIÓ? Se pregunta al `log`, no a `edificaciones`: la fila
+ * solo guarda el último uuid y varios envíos tocan la misma fila.
  */
 function uuidYaAplicado(libro, uuid) {
   var hoja = libro.getSheetByName(HOJA_LOG)
   if (!hoja) return false
   var filas = hoja.getDataRange().getValues()
-  var vistos = 0
   for (var i = 1; i < filas.length; i++) {
-    if (String(filas[i][1]) === String(uuid)) vistos++
-    // El propio envío ya quedó registrado arriba; dos apariciones = reintento.
-    if (vistos > 1) return true
+    if (
+      String(filas[i][1]) === String(uuid) &&
+      String(filas[i][COLUMNA_APLICADO - 1]).toLowerCase() === 'si'
+    ) {
+      return true
+    }
   }
   return false
 }
