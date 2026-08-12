@@ -22,30 +22,28 @@ import {
   FormularioCrear,
   ListaEdificaciones,
   MapaEdificaciones,
+  ConfirmarConexion,
   Modal,
+  PanelConexion,
   PanelCoordinacion,
   type AccionesFicha,
 } from '@dania/ui'
 import { useCallback, useMemo, useState } from 'react'
+import {
+  dominioDe,
+  enlaceParaCompartir,
+  guardarConfiguracion,
+  leerConfiguracion,
+  limpiarEnlace,
+  olvidarConfiguracion,
+  propuestaDelEnlace,
+  type Propuesta,
+} from './configuracion.ts'
 import { useCola } from './useCola.ts'
 import { useEdificaciones } from './useEdificaciones.ts'
 
-/**
- * Sin `VITE_CSV_URL` la aplicación arranca con datos de demostración: se puede
- * mostrar a una cuadrilla o a la coordinación sin tocar la hoja real.
- */
+/** Datos de ejemplo mientras no haya una hoja conectada. */
 const URL_DEMO = `${import.meta.env.BASE_URL}demo/edificaciones.csv`
-const URL_CSV = import.meta.env['VITE_CSV_URL'] || URL_DEMO
-const ES_DEMO = URL_CSV === URL_DEMO
-
-/**
- * Sin endpoint de escritura, la aplicación queda de solo lectura… salvo sobre
- * los datos de demostración, donde se habilita un modo de práctica: los cambios
- * se guardan en este teléfono y nunca se mandan a ninguna parte. Sirve para
- * enseñar el flujo completo a una cuadrilla sin tocar la hoja real.
- */
-const URL_ENVIOS = import.meta.env['VITE_ENVIOS_URL'] || ''
-const ES_PRACTICA = !URL_ENVIOS && ES_DEMO
 
 const CLAVE_CUADRILLA = 'dania:cuadrilla'
 const CLAVE_COORDINACION = 'dania:coordinacion'
@@ -81,10 +79,33 @@ function pedirUbicacion(): Promise<GeolocationPosition> {
 }
 
 export function App() {
+  // La hoja puede venir del teléfono, de la compilación o de ningún sitio; en
+  // este último caso se muestran datos de ejemplo y se practica sobre ellos.
+  const [configuracion, setConfiguracion] = useState(() => leerConfiguracion())
+  const [propuesta, setPropuesta] = useState<Propuesta | null>(() => propuestaDelEnlace())
+  const ES_DEMO = configuracion.origen === 'demo'
+  const URL_CSV = ES_DEMO ? URL_DEMO : configuracion.csv
+  const URL_ENVIOS = ES_DEMO ? '' : configuracion.envios
+  const ES_PRACTICA = ES_DEMO
+
   const { edificaciones, columnasProhibidas, cargando, error, actualizadoEn, recargar } =
     useEdificaciones(URL_CSV)
   const { cola, aplicados, rechazos, enviando, hayRed, agregar, enviar, descartarRechazos } =
     useCola(URL_ENVIOS, ES_PRACTICA)
+
+  const conectar = useCallback((datos: Propuesta) => {
+    guardarConfiguracion(datos)
+    limpiarEnlace()
+    setPropuesta(null)
+    setConfiguracion(leerConfiguracion())
+  }, [])
+
+  const olvidar = useCallback(() => {
+    olvidarConfiguracion()
+    limpiarEnlace()
+    setPropuesta(null)
+    setConfiguracion(leerConfiguracion())
+  }, [])
 
   const [filtro, setFiltro] = useState<Filtro>(FILTRO_VACIO)
   const [vista, setVista] = useState<Vista>('mapa')
@@ -97,7 +118,9 @@ export function App() {
     return guardado === null ? ES_PRACTICA : guardado === 'si'
   })
   const [modoPunto, setModoPunto] = useState<ModoPunto>(null)
-  const [panel, setPanel] = useState<'ninguno' | 'filtros' | 'ayuda' | 'coordinacion'>('ninguno')
+  const [panel, setPanel] = useState<
+    'ninguno' | 'filtros' | 'ayuda' | 'coordinacion' | 'conexion'
+  >('ninguno')
   const [puntoCreacion, setPuntoCreacion] = useState<{ lat: number; lon: number } | null>(null)
   const [ubicando, setUbicando] = useState(false)
   const [errorUbicacion, setErrorUbicacion] = useState<string | null>(null)
@@ -437,18 +460,19 @@ export function App() {
 
       <Modal abierto={panel === 'ayuda'} titulo="Cómo se usa" onCerrar={() => setPanel('ninguno')}>
         <div className="a-ayuda">
-          {ES_PRACTICA && (
+          {ES_PRACTICA ? (
             <p>
               <strong>Modo práctica con datos de ejemplo.</strong> Todo lo que hagan se queda en
-              este teléfono y no se envía a ninguna parte.
+              este teléfono y no se envía a ninguna parte. Para trabajar de verdad, conecten la hoja
+              de la operación abajo.
             </p>
-          )}
-          {ES_DEMO && !ES_PRACTICA && (
+          ) : (
             <p>
-              Datos de demostración. Para usar la hoja real hay que definir <code>VITE_CSV_URL</code>
-              con el CSV publicado de la pestaña «publico».
+              Conectada a <strong>{dominioDe(configuracion.csv)}</strong>
+              {configuracion.envios ? '.' : ' · solo lectura, sin enlace de escritura.'}
             </p>
           )}
+
           <p>
             Los colores son el estado de cada edificación: <strong>rojo</strong> colapsada,{' '}
             <strong>naranja</strong> por visitar, <strong>verde</strong> ya visitada. Tocando los
@@ -474,7 +498,56 @@ export function App() {
               ? `Datos de las ${horaCorta(actualizadoEn)} · ${visibles.length} de ${conPendientes.length} edificaciones a la vista.`
               : 'Cargando información…'}
           </p>
+          <div className="d-ficha__acciones">
+            <button className="d-boton" onClick={() => setPanel('conexion')}>
+              {ES_DEMO ? 'Conectar una hoja' : 'Hoja conectada'}
+            </button>
+          </div>
         </div>
+      </Modal>
+
+      <Modal
+        abierto={panel === 'conexion'}
+        titulo="Hoja de la operación"
+        onCerrar={() => setPanel('ninguno')}
+      >
+        <PanelConexion
+          actual={{ csv: ES_DEMO ? '' : configuracion.csv, envios: configuracion.envios }}
+          origen={configuracion.origen}
+          enlace={enlaceParaCompartir(configuracion)}
+          dominioDe={dominioDe}
+          onConectar={(datos) => {
+            conectar(datos)
+            setPanel('ninguno')
+          }}
+          onOlvidar={() => {
+            olvidar()
+            setPanel('ninguno')
+          }}
+        />
+      </Modal>
+
+      {/* Un enlace no conecta solo: trae a dónde se manda el trabajo de campo. */}
+      <Modal
+        abierto={propuesta !== null}
+        titulo="¿Conectar esta hoja?"
+        onCerrar={() => {
+          limpiarEnlace()
+          setPropuesta(null)
+        }}
+      >
+        {propuesta && (
+          <ConfirmarConexion
+            csv={propuesta.csv}
+            envios={propuesta.envios}
+            dominioDe={dominioDe}
+            onAceptar={() => conectar(propuesta)}
+            onRechazar={() => {
+              limpiarEnlace()
+              setPropuesta(null)
+            }}
+          />
+        )}
       </Modal>
 
       <Modal

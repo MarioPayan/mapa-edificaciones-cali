@@ -14,7 +14,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "check": "pnpm typecheck && pnpm test",
-    "e2e": "pnpm build && node pruebas/casos-de-uso.mjs",
+    "e2e": "VITE_CSV_URL=/demo/edificaciones.csv VITE_ENVIOS_URL=/envios-prueba pnpm build && node pruebas/casos-de-uso.mjs",
     "e2e:desplegado": "node pruebas/casos-de-uso.mjs",
     "bucle": "node pruebas/bucle-completo.mjs"
   },

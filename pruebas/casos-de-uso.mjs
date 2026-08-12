@@ -533,6 +533,33 @@ const main = async () => {
     puedeReclamarVisitada === 0 && yaVisitada.includes('Visitada'))
   await cerrarFicha()
 
+  // ────────────────────────────────────────── Conexión con la hoja (sin repo)
+  console.log('Conexión — apuntar la aplicación a una hoja desde el teléfono')
+  await pagina.goto(`${BASE}?csv=${encodeURIComponent('https://hoja-de-prueba.test/publico.csv')}`, {
+    waitUntil: 'domcontentloaded',
+  })
+  const confirmacion = await pagina
+    .waitForSelector('.d-ficha', { timeout: 10000 })
+    .then(async () => (await pagina.locator('.d-ficha').textContent()) ?? '')
+    .catch(() => '')
+  comprobar('Conexión', 'un enlace con hoja pide confirmación antes de conectar',
+    confirmacion.includes('¿Conectar esta hoja?') || confirmacion.includes('Conectar esta hoja'))
+  comprobar('Conexión', 'y enseña a qué dominio se mandaría el trabajo de campo',
+    confirmacion.includes('hoja-de-prueba.test'))
+  await pagina.getByRole('button', { name: 'No, seguir como estaba' }).click()
+  await pagina.waitForTimeout(400)
+  comprobar('Conexión', 'al rechazarlo, el enlace se limpia de la barra de direcciones',
+    !pagina.url().includes('csv='), pagina.url().slice(0, 60))
+
+  const enlaceMalicioso = `${BASE}?csv=${encodeURIComponent('javascript:alert(1)')}`
+  await pagina.goto(enlaceMalicioso, { waitUntil: 'domcontentloaded' })
+  await pagina.waitForSelector('.d-marcador')
+  comprobar('Conexión', 'una URL que no es https ni localhost no llega a proponerse',
+    (await pagina.locator('.d-ficha').count()) === 0)
+
+  await pagina.goto(BASE, { waitUntil: 'networkidle' })
+  await pagina.waitForSelector('.d-marcador')
+
   // ─────────────────────────────────────────────── PWA / sin señal al abrir
   console.log('PWA — abrir sin señal')
   const manifiesto = await pagina.evaluate(async (base) => {

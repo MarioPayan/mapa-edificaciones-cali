@@ -48,19 +48,26 @@ Sin configuración arranca con `packages/app/public/demo/edificaciones.csv` y ha
 práctica**: se puede reclamar, ubicar y caracterizar para aprender el flujo, y los cambios se
 quedan en ese teléfono sin salir a ninguna parte.
 
-Para usar la hoja real:
+## Conectar la hoja de la operación
 
-```bash
-cat >> packages/app/.env.local <<'FIN'
-VITE_CSV_URL=https://docs.google.com/spreadsheets/d/e/…/pub?gid=…&single=true&output=csv
-VITE_ENVIOS_URL=https://script.google.com/macros/s/…/exec
-FIN
-```
+**Desde el propio teléfono, sin tocar el repositorio ni reconstruir.** En el ícono ⓘ →
+«Conectar una hoja» se pegan dos enlaces:
 
-El primero sale de **Archivo → Compartir → Publicar en la web**, eligiendo **la pestaña `publico`**
-y formato CSV; nunca el libro completo. El segundo es la web app de Apps Script
-(ver [`packages/apps-script/README.md`](./packages/apps-script/README.md)). Sin `VITE_ENVIOS_URL`
-sobre datos reales, el mapa es de solo lectura.
+- el **CSV publicado** de la pestaña `publico` (Archivo → Compartir → Publicar en la web; nunca el
+  libro completo),
+- el **enlace de escritura** de la web app de Apps Script
+  (ver [`packages/apps-script/README.md`](./packages/apps-script/README.md)).
+
+Hecho eso, la misma pantalla ofrece **un enlace para repartir por chat**: quien lo abra queda
+conectado a esa hoja después de confirmar. Un enlace nunca conecta solo — antes se muestra a qué
+dominio se mandaría lo que capturan las cuadrillas, porque aceptarlo a ciegas sería entregarle el
+trabajo de campo a quien mandó el mensaje. Solo se admiten enlaces `https` (o `localhost` para
+probar).
+
+Sin enlace de escritura el mapa funciona igual, pero solo se puede consultar.
+
+Para fijar la configuración de un despliegue entero, siguen valiendo las variables de compilación
+`VITE_CSV_URL` y `VITE_ENVIOS_URL`; lo que se conecte desde el teléfono manda sobre ellas.
 
 ## Paquetes
 

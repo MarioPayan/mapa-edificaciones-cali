@@ -19,6 +19,13 @@ export {
 export { contarFiltrosDeZona, FiltroBarra, type FiltroBarraProps } from './FiltroBarra.tsx'
 export { ListaEdificaciones, type ListaEdificacionesProps } from './ListaEdificaciones.tsx'
 export { Modal, type ModalProps } from './Modal.tsx'
+export {
+  ConfirmarConexion,
+  PanelConexion,
+  type ConfirmarConexionProps,
+  type DatosConexion,
+  type PanelConexionProps,
+} from './PanelConexion.tsx'
 export { MapaEdificaciones, type MapaEdificacionesProps } from './MapaEdificaciones.tsx'
 export {
   FormularioCrear,
