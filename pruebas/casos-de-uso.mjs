@@ -562,6 +562,41 @@ const main = async () => {
   // Los CU siguientes no heredan el código registrado.
   await ponerCodigo('C-07')
 
+  // ─────────────────────────────────────────────────────────────── CU-13
+  console.log('CU-13 — Un residente reporta su edificación, sin código')
+  // CU-08 dejó la vista en Lista y una búsqueda activa: el conteo va sobre el mapa.
+  await limpiarFiltros()
+  await verMapa()
+  const antesDeReportar = await pagina.locator('.leaflet-marker-icon .d-marcador').count()
+  await pagina.getByRole('button', { name: 'Qué es esto y cómo se usa' }).click()
+  await pagina.getByRole('button', { name: 'Reportar mi edificación' }).click()
+  const gpsTomado = await pagina
+    .waitForSelector('text=Ubicación tomada', { timeout: 8000 })
+    .then(() => true)
+    .catch(() => false)
+  comprobar('CU-13', 'el GPS se toma solo al abrir el formulario', gpsTomado)
+  await pagina.getByLabel('Nombre').fill('Vecina Prueba')
+  await pagina.getByLabel('Celular').fill('3025554433')
+  await pagina.getByLabel('Dirección').fill('Calle 5 44-21')
+  await pagina.getByRole('button', { name: 'Enviar reporte' }).click()
+  const confirmado = await pagina
+    .waitForSelector('text=Reporte enviado', { timeout: 5000 })
+    .then(() => true)
+    .catch(() => false)
+  comprobar('CU-13', 'el reporte se confirma sin pedir código ni cuenta', confirmado)
+  await pagina.getByRole('button', { name: 'Listo', exact: true }).click()
+  await pagina.waitForTimeout(400)
+  const trasReportar = await pagina.locator('.leaflet-marker-icon .d-marcador').count()
+  comprobar('CU-13', 'el punto del residente entra al mapa de inmediato',
+    trasReportar === antesDeReportar + 1, `${antesDeReportar} → ${trasReportar}`)
+  if (CON_ENDPOINT) {
+    const reporteEnviado = recibidos[recibidos.length - 1]
+    comprobar('CU-13', 'el envío lleva contacto y el GPS del teléfono',
+      reporteEnviado?.tipo === 'reportar' &&
+        reporteEnviado?.datos?.telefono === '3025554433' &&
+        Math.abs(Number(reporteEnviado?.datos?.lat) - 3.4712) < 0.01)
+  }
+
   // ────────────────────────────────────────── Conexión con la hoja (sin repo)
   console.log('Conexión — apuntar la aplicación a una hoja desde el teléfono')
   await pagina.goto(`${BASE}?csv=${encodeURIComponent('https://hoja-de-prueba.test/publico.csv')}`, {

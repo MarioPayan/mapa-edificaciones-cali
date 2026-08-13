@@ -348,6 +348,84 @@ describe('registrar — CU-12, código en autoservicio', () => {
   })
 })
 
+describe('reportar — CU-13, la puerta del residente sobre la hoja', () => {
+  const reporte = (extra = {}) => ({
+    uuid: `u-${Math.random().toString(16).slice(2)}`,
+    tipo: 'reportar',
+    edificacionId: 'V-PRUEBA',
+    cuadrilla: '',
+    creadoEn: new Date().toISOString(),
+    datos: {
+      nombre: 'Vecina Prueba',
+      telefono: '3017654321',
+      correo: 'v@ejemplo.co',
+      direccionTexto: 'Carrera 44 con calle 5',
+      barrio: 'El Lido',
+      comuna: '19',
+      unidadApto: 'apto 302',
+      lat: 3.42,
+      lon: -76.54,
+    },
+    ...extra,
+  })
+
+  it('crea la fila por visitar con el contacto en la maestra', () => {
+    expect(entorno.doPost(reporte()).ok).toBe(true)
+    expect(fila('V-PRUEBA')).toMatchObject({
+      estado: 'NARANJA',
+      origen: 'reporte_app',
+      direccion_texto: 'Carrera 44 con calle 5',
+      contacto_telefono: '3017654321',
+      unidad_apto: 'apto 302',
+    })
+  })
+
+  it('el contacto del residente nunca sale a la vista pública', () => {
+    entorno.doPost(reporte())
+    const publico = proyectarPublico(entorno.libro)
+    expect(publico).toContain('V-PRUEBA')
+    expect(publico).not.toContain('3017654321')
+    expect(publico).not.toContain('Vecina Prueba')
+  })
+
+  it('reportar dos veces el mismo uuid no duplica la fila', () => {
+    const r = reporte({ uuid: 'u-reporte-fijo' })
+    entorno.doPost(r)
+    expect(entorno.doPost(r)).toMatchObject({ ok: true, repetido: true })
+    expect(
+      entorno.libro.comoObjetos('edificaciones').filter((f) => f.id === 'V-PRUEBA'),
+    ).toHaveLength(1)
+  })
+})
+
+describe('doGet — el web app sirve la vista pública como CSV', () => {
+  it('responde el CSV sin contacto y sin duplicados', () => {
+    entorno.doPost(
+      envio({ tipo: 'duplicar', cuadrilla: 'K-01', datos: { duplicadoDe: 'D-0002' } }),
+    )
+    const csv = entorno.doGet()
+    expect(csv.split('\n')[0]).toContain('id,')
+    expect(csv).toContain('D-0002')
+    expect(csv).not.toContain('D-0001,') // fusionada: fuera de la vista
+    expect(csv).not.toContain('contacto_')
+    expect(csv).not.toContain('3001234567')
+  })
+
+  it('sobre un libro virgen se instala solo y responde el encabezado', () => {
+    const virgen = crearEntorno({ hojas: {} })
+    const csv = virgen.doGet()
+    expect(virgen.libro.getSheetByName('edificaciones')).not.toBeNull()
+    expect(csv.split('\n')[0]).toContain('id,')
+    // Y deja el código de coordinación inicial para poder operar desde ya.
+    expect(virgen.libro.comoObjetos('coordinacion').map((f) => f.codigo)).toContain('K-01')
+  })
+
+  it('lo que escribe una cuadrilla sale en la siguiente lectura, al momento', () => {
+    entorno.doPost(envio())
+    expect(entorno.doGet()).toContain('C-07')
+  })
+})
+
 describe('geocodificarSinUbicar — importaciones por dirección', () => {
   function conImportadas(filas, geocodificar) {
     return crearEntorno({

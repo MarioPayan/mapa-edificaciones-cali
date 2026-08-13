@@ -5,9 +5,11 @@ Mapa semáforo de las edificaciones reportadas tras una emergencia estructural: 
 en la visita.
 
 Está hecho para una cuadrilla con un teléfono en la calle: sirve sin señal, se instala como
-aplicación desde el navegador y no exige cuenta de nadie. Quien no tiene código de cuadrilla se
-registra desde el propio teléfono (nombre y teléfono) y recibe uno al instante — sin esperar a que
-alguien lo reparta.
+aplicación desde el navegador y no exige cuenta de nadie. Tiene **dos puertas** (pedido de campo):
+el **residente** reporta su edificación con nombre, celular y el GPS del teléfono — sin código ni
+cuenta —, y el **revisor** (arquitectos, ingenieros, cuadrillas) ve los puntos, reclama y
+caracteriza. Quien no tiene código de cuadrilla se registra desde el propio teléfono y recibe uno
+al instante — sin esperar a que alguien lo reparta.
 
 **Publicado en <https://mariopayan.github.io/mapa-edificaciones-cali/>** — con datos de ejemplo y
 en modo práctica: se entra con una cuadrilla ya puesta, así que desde el primer toque se puede
@@ -53,12 +55,13 @@ quedan en ese teléfono sin salir a ninguna parte.
 ## Conectar la hoja de la operación
 
 **Desde el propio teléfono, sin tocar el repositorio ni reconstruir.** En el ícono ⓘ →
-«Conectar una hoja» se pegan dos enlaces:
+«Conectar una hoja» se pegan dos enlaces — y desde que el web app también sirve el CSV, **los dos
+son la misma URL `/exec`** de Apps Script (ver
+[`packages/apps-script/README.md`](./packages/apps-script/README.md)):
 
-- el **CSV publicado** de la pestaña `publico` (Archivo → Compartir → Publicar en la web; nunca el
-  libro completo),
-- el **enlace de escritura** de la web app de Apps Script
-  (ver [`packages/apps-script/README.md`](./packages/apps-script/README.md)).
+- como **enlace del CSV**: un GET responde la vista pública al momento, sin los minutos de retraso
+  del «Publicar en la web»,
+- como **enlace de escritura**: el POST de los envíos de siempre.
 
 Hecho eso, la misma pantalla ofrece **un enlace para repartir por chat**: quien lo abra queda
 conectado a esa hoja después de confirmar. Un enlace nunca conecta solo — antes se muestra a qué

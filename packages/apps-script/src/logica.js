@@ -14,7 +14,7 @@ var HORAS_RECLAMO = 4
 /** Tope de texto libre. Evita que un pegado accidental llene la hoja. */
 var MAX_TEXTO = 4000
 
-var TIPOS = ['reclamar', 'liberar', 'ubicar', 'caracterizar', 'colapsar', 'crear', 'duplicar']
+var TIPOS = ['reclamar', 'liberar', 'ubicar', 'caracterizar', 'colapsar', 'crear', 'duplicar', 'reportar']
 
 /** Tipos reservados a coordinación: cambian el universo de puntos, no un dato de campo. */
 var TIPOS_COORDINACION = ['crear', 'duplicar']
@@ -58,12 +58,14 @@ function validarEnvio(envio, cuadrillasValidas, codigosCoordinacion) {
   if (TIPOS.indexOf(envio.tipo) === -1) return 'tipo_desconocido'
   if (!texto(envio.uuid)) return 'falta_uuid'
   if (!texto(envio.edificacionId)) return 'falta_edificacion'
-  if (!texto(envio.cuadrilla)) return 'falta_cuadrilla'
+  // CU-13: el residente que reporta su edificación no tiene ni necesita código.
+  // Su identidad es su contacto, que exige `validarEnvio` más abajo.
+  if (envio.tipo !== 'reportar' && !texto(envio.cuadrilla)) return 'falta_cuadrilla'
   // Un código de coordinación vale como código de cuadrilla: obligar a
   // apuntarlo en las dos pestañas era una trampa para quien monta la hoja —
   // se apunta en `coordinacion` y todo se rechaza por «cuadrilla desconocida».
   var reconocidos = (cuadrillasValidas || []).concat(codigosCoordinacion || [])
-  if (cuadrillasValidas && cuadrillasValidas.length > 0) {
+  if (envio.tipo !== 'reportar' && cuadrillasValidas && cuadrillasValidas.length > 0) {
     if (reconocidos.indexOf(texto(envio.cuadrilla)) === -1) return 'cuadrilla_no_reconocida'
   }
 
@@ -81,6 +83,13 @@ function validarEnvio(envio, cuadrillasValidas, codigosCoordinacion) {
     if (!coordenadaPlausible(d.lat, d.lon)) return 'coordenada_fuera_de_rango'
   }
   if (envio.tipo === 'crear' && !texto(d.direccionTexto)) return 'falta_direccion'
+  if (envio.tipo === 'reportar') {
+    if (!texto(d.nombre)) return 'falta_nombre'
+    if (!texto(d.telefono)) return 'falta_telefono'
+    if (!texto(d.direccionTexto)) return 'falta_direccion'
+    // La coordenada no se valida aquí: un GPS malo no puede botar el reporte —
+    // `decidir` la descarta y la fila entra «sin ubicar», como en la ingesta.
+  }
   if (envio.tipo === 'duplicar') {
     if (!texto(d.duplicadoDe)) return 'falta_principal'
     if (texto(d.duplicadoDe) === texto(envio.edificacionId)) return 'duplicado_de_si_misma'
@@ -147,6 +156,31 @@ function decidir(envio, fila, ahoraMs) {
           creado_en: ahoraISO,
         },
       }
+
+    case 'reportar': {
+      // CU-13: «vengan, revisen mi casa». El GPS del residente vale como pista
+      // (queda 'manual': la cuadrilla lo corrige parada en la puerta, R-09);
+      // uno implausible se descarta y la fila entra sin ubicar, nunca se bota.
+      var conGPS = coordenadaPlausible(datos.lat, datos.lon)
+      return {
+        ok: true,
+        cambios: {
+          direccion_texto: texto(datos.direccionTexto),
+          barrio: texto(datos.barrio),
+          comuna: texto(datos.comuna),
+          lat_reporte: conGPS ? datos.lat : '',
+          lon_reporte: conGPS ? datos.lon : '',
+          precision_reporte: conGPS ? 'manual' : 'sin_ubicar',
+          estado: 'NARANJA',
+          origen: 'reporte_app',
+          creado_en: ahoraISO,
+          contacto_nombre: texto(datos.nombre),
+          contacto_telefono: texto(datos.telefono),
+          contacto_correo: texto(datos.correo),
+          unidad_apto: texto(datos.unidadApto),
+        },
+      }
+    }
 
     case 'caracterizar':
       return {

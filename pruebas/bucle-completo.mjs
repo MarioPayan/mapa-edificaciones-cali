@@ -197,6 +197,27 @@ try {
     `reclamada_por = ${hoja.fila(tercera.id).reclamada_por || '(vacío)'}`)
   await pagina.getByRole('button', { name: 'Cerrar' }).last().click()
 
+  // ── Reportar como residente (CU-13): sin código, el contacto llega a la hoja
+  await pagina.getByRole('button', { name: 'Qué es esto y cómo se usa' }).click()
+  await pagina.getByRole('button', { name: 'Reportar mi edificación' }).click()
+  await pagina.waitForSelector('text=Ubicación tomada')
+  await pagina.getByLabel('Nombre').fill('Vecina Bucle')
+  await pagina.getByLabel('Celular').fill('3025554433')
+  await pagina.getByLabel('Dirección').fill('Calle 5 44-21')
+  await pagina.getByRole('button', { name: 'Enviar reporte' }).click()
+  await pagina.waitForTimeout(1500)
+
+  const reportada = hoja.entorno.libro
+    .comoObjetos('edificaciones')
+    .find((f) => f.origen === 'reporte_app')
+  comprobar('el reporte del residente llegó a la hoja con su contacto',
+    reportada?.contacto_telefono === '3025554433' && reportada?.estado === 'NARANJA',
+    reportada ? reportada.id : '(no llegó)')
+  const csvConReporte = await (await fetch(hoja.urlCsv)).text()
+  comprobar('el CSV público trae el punto pero no el teléfono del residente',
+    csvConReporte.includes(reportada.id) && !csvConReporte.includes('3025554433'))
+  await pagina.getByRole('button', { name: 'Listo', exact: true }).click()
+
   const uuids = hoja.peticiones.map((e) => e.uuid)
   comprobar('ningún envío se mandó dos veces', new Set(uuids).size === uuids.length,
     `${uuids.length} envíos, ${new Set(uuids).size} uuids`)

@@ -10,6 +10,7 @@ import {
   type DatosColapsar,
   type DatosCrear,
   type DatosRegistro,
+  type DatosReportar,
   type Edificacion,
   type Filtro,
 } from '@dania/data'
@@ -23,6 +24,7 @@ import {
   FiltroBarra,
   FormularioCrear,
   FormularioRegistro,
+  FormularioReporte,
   ListaEdificaciones,
   MapaEdificaciones,
   ConfirmarConexion,
@@ -131,7 +133,7 @@ export function App() {
   })
   const [modoPunto, setModoPunto] = useState<ModoPunto>(null)
   const [panel, setPanel] = useState<
-    'ninguno' | 'filtros' | 'ayuda' | 'coordinacion' | 'conexion' | 'registro'
+    'ninguno' | 'filtros' | 'ayuda' | 'coordinacion' | 'conexion' | 'registro' | 'reporte'
   >('ninguno')
   const [puntoCreacion, setPuntoCreacion] = useState<{ lat: number; lon: number } | null>(null)
   const [ubicando, setUbicando] = useState(false)
@@ -185,6 +187,19 @@ export function App() {
       return codigo
     },
     [ES_PRACTICA, URL_ENVIOS, guardarCuadrilla],
+  )
+
+  /**
+   * CU-13: la puerta del residente. No exige código — el reporte viaja con su
+   * contacto. Va por la cola: sin señal queda guardado y sale solo.
+   */
+  const reportar = useCallback(
+    (datos: DatosReportar) => {
+      // El id lo pone el cliente para que el reintento sea idempotente (como en crear).
+      const id = `V-${Date.now().toString(36).toUpperCase()}`
+      void agregar(crearEnvio('reportar', id, cuadrilla, datos))
+    },
+    [agregar, cuadrilla],
   )
 
   const abrirCoordinacion = useCallback(() => {
@@ -398,13 +413,18 @@ export function App() {
 
       {/* Solo lo que exige acción se queda ocupando pantalla; lo explicativo
           vive detrás del ícono ⓘ. */}
+      {/* Las dos puertas (CU-12 y CU-13): residente que reporta, cuadrilla que revisa. */}
       {URL_ENVIOS && !cuadrilla && (
         <Aviso tono="info">
-          Pongan el código de su cuadrilla arriba para poder reclamar y caracterizar. Sin código, el
-          mapa es de solo lectura.{' '}
+          ¿Su edificación está afectada?{' '}
+          <button className="d-boton" onClick={() => setPanel('reporte')}>
+            Reportar mi edificación
+          </button>{' '}
+          ¿Es de una cuadrilla de evaluación? Ponga su código arriba, o{' '}
           <button className="d-boton" onClick={() => setPanel('registro')}>
-            ¿Sin código? Regístrese
-          </button>
+            regístrese
+          </button>{' '}
+          para recibir uno.
         </Aviso>
       )}
 
@@ -532,6 +552,11 @@ export function App() {
               : 'Cargando información…'}
           </p>
           <div className="d-ficha__acciones">
+            {(URL_ENVIOS || ES_PRACTICA) && (
+              <button className="d-boton" onClick={() => setPanel('reporte')}>
+                Reportar mi edificación
+              </button>
+            )}
             <button className="d-boton" onClick={() => setPanel('conexion')}>
               {ES_DEMO ? 'Conectar una hoja' : 'Hoja conectada'}
             </button>
@@ -556,6 +581,21 @@ export function App() {
         onCerrar={() => setPanel('ninguno')}
       >
         <FormularioRegistro onRegistrar={registrar} onCerrar={() => setPanel('ninguno')} />
+      </Modal>
+
+      <Modal
+        abierto={panel === 'reporte'}
+        titulo="Reportar mi edificación"
+        onCerrar={() => setPanel('ninguno')}
+      >
+        <FormularioReporte
+          obtenerGPS={async () => {
+            const posicion = await pedirUbicacion()
+            return { lat: posicion.coords.latitude, lon: posicion.coords.longitude }
+          }}
+          onReportar={reportar}
+          onCerrar={() => setPanel('ninguno')}
+        />
       </Modal>
 
       <Modal

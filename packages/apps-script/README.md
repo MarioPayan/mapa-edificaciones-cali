@@ -1,12 +1,14 @@
 # @dania/apps-script — punto de escritura
 
-Web app de Google Apps Script que recibe los envíos de las cuadrillas y los escribe en la hoja.
-Es el **único** lugar donde algo se escribe: el mapa solo lee el CSV publicado.
+Web app de Google Apps Script con una sola URL `/exec` que **lee y escribe**: un GET responde la
+vista pública como CSV (lo que antes exigía «Publicar en la web», pero al momento y sin pestaña que
+elegir mal) y un POST recibe los envíos y los escribe en la hoja. Es el **único** punto de
+escritura, y ahora también la fuente de lectura del mapa.
 
 | Archivo | Qué es |
 |---------|--------|
 | `src/logica.js` | Las reglas (validación, conflicto de reclamos, qué columna cambia). Sin dependencias y probado con vitest. |
-| `src/Codigo.gs` | El pegamento con Google: `doPost`, candado, `log`, búsqueda de la fila. |
+| `src/Codigo.gs` | El pegamento con Google: `doGet` (CSV público, autoinstala la hoja al primer toque), `doPost`, candado, `log`, búsqueda de la fila. |
 | `src/Ingesta.gs` | Trae los reportes del Form a `edificaciones` y los geocodifica (CU-01). También `geocodificarSinUbicar`, que ubica lo importado por dirección con `herramientas/importar-mymaps.mjs`. |
 | `src/Instalar.gs` | Deja la hoja lista de una ejecución: pestañas, encabezados y la fórmula de `publico`. |
 
@@ -31,7 +33,24 @@ La fórmula de `publico` tiene que producir exactamente lo que
 columnas menos `contacto_*`, `unidad_apto`, `fotos` y `uuid_envio`, y sin las
 filas que tengan `duplicado_de`.
 
-## Puesta en marcha (unos 20 minutos)
+## Puesta en marcha con clasp (unos 5 minutos)
+
+Una sola vez, en la cuenta de la operación:
+
+1. `npx --yes @google/clasp@2.4.2 login` — abre el navegador y autoriza.
+2. Activar «Google Apps Script API» en <https://script.google.com/home/usersettings>.
+3. `./herramientas/desplegar-hoja.sh` — crea la hoja con su script, sube el código y publica el
+   web app (ejecutar como el dueño, acceso para cualquiera: eso viene del `appsscript.json`).
+4. Abrir la URL `…/exec` que imprime el script **una vez en el navegador del dueño** y autorizar
+   los permisos. Con ese primer toque la hoja **se instala sola** (pestañas, encabezados, fórmula
+   de `publico` y el código de coordinación inicial `K-01` — cambiarlo para una operación real).
+
+Esa única URL `/exec` es a la vez `VITE_CSV_URL` y `VITE_ENVIOS_URL` (variables del repositorio en
+GitHub, o `packages/app/.env.local` en local), o los dos enlaces que se pegan al conectar desde el
+teléfono. Para actualizar el código después: volver a correr `desplegar-hoja.sh` — versiona sobre
+la misma implementación y la URL no cambia.
+
+## Puesta en marcha manual (alternativa, unos 20 minutos)
 
 1. Crear una hoja de cálculo nueva en la cuenta de la operación.
 2. **Extensiones → Apps Script**, y pegar los cuatro archivos de `src/` (los nombres dan igual; el
@@ -41,16 +60,17 @@ filas que tengan `duplicado_de`.
    volver a ejecutar cuantas veces se quiera: no pisa datos.
 4. Escribir los códigos en `cuadrillas` (uno por fila) y en `coordinacion` los de quien puede crear
    y fusionar. Un código de coordinación cuenta también como cuadrilla.
-5. **Archivo → Compartir → Publicar en la web**: la pestaña **`publico`**, formato **CSV**. Ese
-   enlace es `VITE_CSV_URL`.
-6. **Implementar → Nueva implementación → Aplicación web**:
+5. **Implementar → Nueva implementación → Aplicación web**:
    - *Ejecutar como*: **yo** (la cuenta de la operación).
    - *Quién tiene acceso*: **cualquier usuario**. Hace falta para que el teléfono de una cuadrilla
      escriba sin iniciar sesión; por eso el código de cuadrilla es atribución, no seguridad.
-7. Copiar la URL `…/exec`: es `VITE_ENVIOS_URL` (variable del repositorio en GitHub, o
-   `packages/app/.env.local` en local).
-8. Para CU-01, enganchar el Form existente a la hoja y añadir un activador de `ingerirReportes` con
+6. Copiar la URL `…/exec`: va en `VITE_CSV_URL` **y** en `VITE_ENVIOS_URL` — el mismo web app
+   responde el CSV en GET.
+7. Para CU-01, enganchar el Form existente a la hoja y añadir un activador de `ingerirReportes` con
    «Al enviar el formulario».
+
+La pestaña `publico` con su fórmula sigue existiendo para mirar la vista con ojos humanos, pero ya
+no hace falta publicarla en la web: `doGet` responde la misma proyección, al momento.
 
 La fórmula de `publico` se genera, no se teclea: es la que decide si los teléfonos de las familias
 salen o no a una página web, y equivocarse escribiendo letras de columna a mano es demasiado fácil.

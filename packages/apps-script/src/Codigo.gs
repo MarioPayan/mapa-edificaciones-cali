@@ -14,6 +14,52 @@ var HOJA_CUADRILLAS = 'cuadrillas'
 var HOJA_COORDINACION = 'coordinacion'
 var HOJA_REGISTROS = 'registros'
 
+/**
+ * Lectura: el mismo web app sirve la vista pública como CSV. Reemplaza el
+ * «Publicar en la web» de la hoja: no hay pestaña que elegir mal, no hay
+ * minutos de retraso — lo que responde sale de `edificaciones` al momento,
+ * con las mismas exclusiones que la fórmula de `publico` (contacto, fotos,
+ * duplicados). Una sola URL para leer (GET) y escribir (POST).
+ */
+function doGet() {
+  var libro = SpreadsheetApp.getActive()
+  // Primer toque sobre una hoja virgen: se instala sola. La puesta en marcha
+  // queda en subir el código y abrir esta URL una vez.
+  if (!libro.getSheetByName(HOJA_EDIFICACIONES)) instalar()
+  return ContentService.createTextOutput(csvPublico(libro)).setMimeType(ContentService.MimeType.CSV)
+}
+
+function csvPublico(libro) {
+  var valores = libro.getSheetByName(HOJA_EDIFICACIONES).getDataRange().getValues()
+  var encabezado = valores[0].map(normalizar)
+  var publicas = []
+  for (var c = 0; c < encabezado.length; c++) {
+    if (COLUMNAS_PRIVADAS.indexOf(encabezado[c]) === -1) publicas.push(c)
+  }
+  var columnaId = encabezado.indexOf('id')
+  var columnaDuplicado = encabezado.indexOf('duplicado_de')
+
+  var lineas = []
+  for (var f = 0; f < valores.length; f++) {
+    if (f > 0) {
+      if (columnaId !== -1 && String(valores[f][columnaId]).trim() === '') continue
+      if (columnaDuplicado !== -1 && String(valores[f][columnaDuplicado]).trim() !== '') continue
+    }
+    var campos = []
+    for (var p = 0; p < publicas.length; p++) campos.push(escaparCSV(valores[f][publicas[p]]))
+    lineas.push(campos.join(','))
+  }
+  return lineas.join('\n')
+}
+
+function escaparCSV(valor) {
+  if (valor === null || valor === undefined) return ''
+  // La hoja convierte los ISO escritos en celdas de fecha; de vuelta salen
+  // como Date y su String() no es parseable en todos lados.
+  var s = valor instanceof Date ? valor.toISOString() : String(valor)
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
+}
+
 function doPost(e) {
   try {
     // Cuerpo en text/plain a propósito: un JSON con Content-Type application/json
@@ -72,7 +118,7 @@ function procesar(envio) {
       }
     }
 
-    if (envio.tipo === 'crear') {
+    if (envio.tipo === 'crear' || envio.tipo === 'reportar') {
       if (numeroFila !== -1) return { ok: false, error: 'ya_existe' }
       // Fila nueva solo con el id; los demás datos los pone `decidir`.
       var filaNueva = new Array(encabezado.length).fill('')

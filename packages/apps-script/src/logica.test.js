@@ -82,6 +82,59 @@ describe('validarRegistro — CU-12', () => {
   })
 })
 
+describe('reportar — CU-13, la puerta del residente', () => {
+  const reporte = (datos = {}) =>
+    envio({
+      tipo: 'reportar',
+      edificacionId: 'V-1',
+      cuadrilla: '',
+      datos: {
+        nombre: 'Dania',
+        telefono: '3001234567',
+        correo: '',
+        direccionTexto: 'Carrera 44 con calle 5',
+        barrio: 'El Lido',
+        comuna: '19',
+        unidadApto: '',
+        lat: 3.42,
+        lon: -76.54,
+        ...datos,
+      },
+    })
+
+  it('no exige código de cuadrilla, ni siquiera con la lista configurada', () => {
+    expect(validarEnvio(reporte(), ['C-07'], ['K-01'])).toBe('')
+  })
+
+  it('exige ser contactable y una dirección', () => {
+    expect(validarEnvio(reporte({ nombre: '' }), [])).toBe('falta_nombre')
+    expect(validarEnvio(reporte({ telefono: '' }), [])).toBe('falta_telefono')
+    expect(validarEnvio(reporte({ direccionTexto: '' }), [])).toBe('falta_direccion')
+  })
+
+  it('con GPS el punto queda como aproximado: la cuadrilla lo corrige en la puerta', () => {
+    const r = decidir(reporte(), {}, AHORA)
+    expect(r.ok).toBe(true)
+    expect(r.cambios).toMatchObject({
+      estado: 'NARANJA',
+      origen: 'reporte_app',
+      lat_reporte: 3.42,
+      precision_reporte: 'manual',
+      contacto_nombre: 'Dania',
+      contacto_telefono: '3001234567',
+    })
+  })
+
+  it('un GPS malo no bota el reporte: entra sin ubicar', () => {
+    // (0,0) es el destino clásico de un GPS mal leído.
+    const r = decidir(reporte({ lat: 0, lon: 0 }), {}, AHORA)
+    expect(r.ok).toBe(true)
+    expect(r.cambios).toMatchObject({ lat_reporte: '', precision_reporte: 'sin_ubicar' })
+    const sinGPS = decidir(reporte({ lat: null, lon: null }), {}, AHORA)
+    expect(sinGPS.cambios).toMatchObject({ precision_reporte: 'sin_ubicar' })
+  })
+})
+
 describe('decidir — reclamar', () => {
   it('reclama una edificación libre', () => {
     const r = decidir(envio(), fila(), AHORA)

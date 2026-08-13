@@ -16,7 +16,6 @@ import {
   COLUMNAS_EDIFICACIONES,
   crearEntorno,
   filaEdificacion,
-  proyectarPublico,
 } from '../packages/apps-script/simulacro/entorno.mjs'
 
 const RAIZ = dirname(dirname(fileURLToPath(import.meta.url)))
@@ -49,9 +48,10 @@ export function levantarServidorSimulado(puerto = 4182) {
       'Cache-Control': 'no-store',
     }
 
-    if (peticion.url?.startsWith('/publico.csv')) {
+    // Como el web app real: GET sobre /exec responde el CSV que arma `doGet`.
+    if (peticion.method === 'GET' && peticion.url?.startsWith('/exec')) {
       respuesta.writeHead(200, { ...cabeceras, 'Content-Type': 'text/csv; charset=utf-8' })
-      respuesta.end(proyectarPublico(entorno.libro))
+      respuesta.end(entorno.doGet())
       return
     }
 
@@ -83,7 +83,8 @@ export function levantarServidorSimulado(puerto = 4182) {
         entorno,
         peticiones,
         url: `http://localhost:${puerto}`,
-        urlCsv: `http://localhost:${puerto}/publico.csv`,
+        // La misma URL lee y escribe, como el /exec de Apps Script.
+        urlCsv: `http://localhost:${puerto}/exec`,
         urlEnvios: `http://localhost:${puerto}/exec`,
         fila: (id) => entorno.libro.comoObjetos('edificaciones').find((f) => f.id === id),
         bitacora: () => entorno.libro.comoObjetos('log'),

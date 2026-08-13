@@ -77,6 +77,43 @@ describe('aplicarEnvios', () => {
   })
 })
 
+describe('aplicarEnvios — reportar (CU-13)', () => {
+  const datos = {
+    nombre: 'Dania',
+    telefono: '3001234567',
+    correo: '',
+    direccionTexto: 'Carrera 44 con calle 5',
+    barrio: 'El Lido',
+    comuna: '19',
+    unidadApto: '',
+    lat: 3.42,
+    lon: -76.54,
+  }
+
+  it('el reporte del residente se pinta de inmediato, sin contacto', () => {
+    const resultado = aplicarEnvios(edificaciones, [crearEnvio('reportar', 'V-1', '', datos)])
+    const nueva = resultado.find((e) => e.id === 'V-1')
+    expect(nueva).toMatchObject({
+      estado: 'NARANJA',
+      origen: 'reporte_app',
+      lat: 3.42,
+      precision: 'manual',
+    })
+    // Edificacion no modela contacto: no hay campo que pueda filtrarlo.
+    expect(JSON.stringify(nueva)).not.toContain('3001234567')
+  })
+
+  it('sin GPS entra sin ubicar y no revienta el mapa', () => {
+    const resultado = aplicarEnvios(edificaciones, [
+      crearEnvio('reportar', 'V-2', '', { ...datos, lat: null, lon: null }),
+    ])
+    expect(resultado.find((e) => e.id === 'V-2')).toMatchObject({
+      lat: null,
+      precision: 'sin_ubicar',
+    })
+  })
+})
+
 describe('registrarCuadrilla — CU-12', () => {
   const DATOS = { nombre: 'Dania', telefono: '3001234567', correo: '', entidad: '' }
   const respuestaFalsa = (cuerpo: unknown) =>

@@ -1,0 +1,2 @@
+# Solo sube lo que corre en Google: las pruebas se quedan en el repositorio.
+**/*.test.js

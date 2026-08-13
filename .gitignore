@@ -15,6 +15,10 @@ transcripcion.md
 # crisis y su consolidado. Lo accionable ya está convertido en código y casos.
 feedback/
 
+# Identidad del despliegue de Apps Script (id del script en la cuenta que lo
+# creó): se genera con herramientas/desplegar-hoja.sh y es de cada cuenta.
+.clasp.json
+
 # El plan de implementación cita textualmente esas notas de voz, con la
 # dirección exacta de un inmueble y opiniones sobre instituciones concretas.
 # Se queda en local; lo esencial del porqué está en el README.

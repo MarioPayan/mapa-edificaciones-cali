@@ -15,6 +15,8 @@ export type TipoEnvio =
   | 'ubicar'
   | 'caracterizar'
   | 'colapsar'
+  // Un residente reporta su edificación (CU-13). No exige código de cuadrilla.
+  | 'reportar'
   // Solo coordinación (el script exige un código de la pestaña `coordinacion`):
   | 'crear'
   | 'duplicar'
@@ -56,6 +58,23 @@ export interface DatosDuplicar {
   duplicadoDe: string
 }
 
+/**
+ * CU-13: «vengan, revisen mi casa». El contacto identifica al residente (no hay
+ * código); el GPS es opcional — sin él la fila entra «sin ubicar» y
+ * coordinación la pone en el mapa (CU-11).
+ */
+export interface DatosReportar {
+  nombre: string
+  telefono: string
+  correo: string
+  direccionTexto: string
+  barrio: string
+  comuna: string
+  unidadApto: string
+  lat: number | null
+  lon: number | null
+}
+
 export interface DatosColapsar {
   rescatadasEnSitio: number | null
   rescatadasFuente: string
@@ -72,7 +91,7 @@ export interface Envio {
   cuadrilla: string
   /** Hora del dispositivo al capturar. Es cuándo pasó, no cuándo se envió. */
   creadoEn: string
-  datos?: DatosCaracterizar | DatosUbicar | DatosColapsar | DatosCrear | DatosDuplicar
+  datos?: DatosCaracterizar | DatosUbicar | DatosColapsar | DatosCrear | DatosDuplicar | DatosReportar
 }
 
 export function nuevoUuid(): string {
@@ -156,30 +175,39 @@ export function aplicarEnvios(edificaciones: Edificacion[], envios: Envio[]): Ed
     return pendientes ? pendientes.reduce(aplicarEnvio, e) : e
   })
 
-  // Las creadas por coordinación aún no están en el CSV: se agregan aparte para
-  // que se vean en el mapa desde el momento en que se crean.
+  // Las creadas por coordinación o reportadas por un residente aún no están en
+  // el CSV: se agregan aparte para que se vean desde el momento en que nacen.
   const yaEsta = new Set(edificaciones.map((e) => e.id))
   const creadas = envios
-    .filter((envio) => envio.tipo === 'crear' && !yaEsta.has(envio.edificacionId))
+    .filter(
+      (envio) =>
+        (envio.tipo === 'crear' || envio.tipo === 'reportar') && !yaEsta.has(envio.edificacionId),
+    )
     .map((envio) => nuevaEdificacion(envio))
 
   return creadas.length > 0 ? [...existentes, ...creadas] : existentes
 }
 
-/** Edificación en blanco a partir de un envío `crear`. */
+/**
+ * Edificación en blanco a partir de un envío `crear` o `reportar`. El contacto
+ * del reporte NO pasa: `Edificacion` no tiene esos campos a propósito — lo que
+ * no se modela no se puede pintar por accidente.
+ */
 function nuevaEdificacion(envio: Envio): Edificacion {
-  const d = envio.datos as DatosCrear
+  const esReporte = envio.tipo === 'reportar'
+  const d = envio.datos as DatosCrear & Partial<DatosReportar>
+  const conGPS = typeof d.lat === 'number' && typeof d.lon === 'number'
   return {
     id: envio.edificacionId,
     creadoEn: envio.creadoEn,
-    origen: 'coordinacion',
+    origen: esReporte ? 'reporte_app' : 'coordinacion',
     direccionTexto: d.direccionTexto,
     barrio: d.barrio,
     comuna: d.comuna,
-    lat: d.lat,
-    lon: d.lon,
-    precision: 'manual',
-    estado: d.estado,
+    lat: conGPS ? d.lat : null,
+    lon: conGPS ? d.lon : null,
+    precision: conGPS ? 'manual' : 'sin_ubicar',
+    estado: esReporte ? 'NARANJA' : d.estado,
     reclamadaPor: '',
     reclamadaEn: '',
     tipoEdificacion: '',
@@ -215,6 +243,7 @@ function aplicarEnvio(e: Edificacion, envio: Envio): Edificacion {
     }
 
     case 'crear':
+    case 'reportar':
       return e
 
     case 'duplicar':

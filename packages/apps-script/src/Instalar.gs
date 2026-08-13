@@ -86,6 +86,14 @@ function instalar() {
     ]),
   )
 
+  // Un código de coordinación inicial para poder crear y fusionar desde el
+  // primer día. Para una operación real conviene cambiarlo en la pestaña.
+  var coordinacion = libro.getSheetByName(HOJA_COORDINACION)
+  if (coordinacion.getLastRow() < 2) {
+    coordinacion.appendRow(['K-01'])
+    hecho.push('coordinacion: código inicial K-01')
+  }
+
   var publico = libro.getSheetByName('publico')
   if (!publico) publico = libro.insertSheet('publico')
   escribirVistaPublica(publico)
