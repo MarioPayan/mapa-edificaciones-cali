@@ -230,6 +230,16 @@ button {
 }
 
 /*
+ * Dentro de un campo (columna) la base flexible de 180px se convertiría en
+ * ALTURA y el campo saldría gigante: aquí el input ocupa el ancho y nada más.
+ */
+.d-campo .d-input {
+  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
+}
+
+/*
  * El z-index va aquí, en el posicionador: es el elemento posicionado. Puesto en
  * el popup no hacía nada y el desplegable quedaba detrás de los paneles de
  * Leaflet (z-index 400–800), visible solo la parte que no cae sobre el mapa.

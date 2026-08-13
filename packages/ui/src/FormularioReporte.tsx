@@ -39,7 +39,6 @@ export function FormularioReporte({ obtenerGPS, onReportar, onCerrar }: Formular
 
   // Dania: «le doy click y ya ubica el punto según el GPS» — se toma solo al
   // abrir, parado frente al inmueble no hay nada más que hacer.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(tomarGPS, [])
 
   if (enviado) {

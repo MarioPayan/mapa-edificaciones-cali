@@ -66,7 +66,8 @@ export function FormularioRegistro({ onRegistrar, onCerrar }: FormularioRegistro
     >
       <p className="d-campo__ayuda">
         Con esto queda autorizado para reclamar y caracterizar. El contacto solo lo ve coordinación;
-        nunca sale al mapa público.
+        nunca sale al mapa público. ¿Ya le dieron un código? Cierre esto y póngalo arriba, en
+        «Cuadrilla».
       </p>
 
       <label className="d-campo">

@@ -413,18 +413,19 @@ export function App() {
 
       {/* Solo lo que exige acción se queda ocupando pantalla; lo explicativo
           vive detrás del ícono ⓘ. */}
-      {/* Las dos puertas (CU-12 y CU-13): residente que reporta, cuadrilla que revisa. */}
+      {/* Las dos puertas (CU-12 y CU-13): residente que reporta, cuadrilla que
+          revisa. Sin prosa: cada centímetro de esta franja es mapa que se pierde,
+          y los botones se explican solos. */}
       {URL_ENVIOS && !cuadrilla && (
         <Aviso tono="info">
-          ¿Su edificación está afectada?{' '}
-          <button className="d-boton" onClick={() => setPanel('reporte')}>
-            Reportar mi edificación
-          </button>{' '}
-          ¿Es de una cuadrilla de evaluación? Ponga su código arriba, o{' '}
-          <button className="d-boton" onClick={() => setPanel('registro')}>
-            regístrese
-          </button>{' '}
-          para recibir uno.
+          <div className="d-ficha__acciones">
+            <button className="d-boton d-boton--principal" onClick={() => setPanel('reporte')}>
+              Reportar mi edificación
+            </button>
+            <button className="d-boton" onClick={() => setPanel('registro')}>
+              Soy de una cuadrilla
+            </button>
+          </div>
         </Aviso>
       )}
 
