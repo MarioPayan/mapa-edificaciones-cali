@@ -5,7 +5,9 @@ Mapa semáforo de las edificaciones reportadas tras una emergencia estructural: 
 en la visita.
 
 Está hecho para una cuadrilla con un teléfono en la calle: sirve sin señal, se instala como
-aplicación desde el navegador y no exige cuenta de nadie.
+aplicación desde el navegador y no exige cuenta de nadie. Quien no tiene código de cuadrilla se
+registra desde el propio teléfono (nombre y teléfono) y recibe uno al instante — sin esperar a que
+alguien lo reparta.
 
 **Publicado en <https://mariopayan.github.io/mapa-edificaciones-cali/>** — con datos de ejemplo y
 en modo práctica: se entra con una cuadrilla ya puesta, así que desde el primer toque se puede

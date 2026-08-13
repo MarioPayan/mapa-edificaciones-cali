@@ -73,6 +73,18 @@ function instalar() {
   )
   hecho.push(asegurarHoja(libro, HOJA_CUADRILLAS, ['codigo']))
   hecho.push(asegurarHoja(libro, HOJA_COORDINACION, ['codigo']))
+  // CU-12: aquí caen los registros en autoservicio, con su contacto. Privada.
+  hecho.push(
+    asegurarHoja(libro, HOJA_REGISTROS, [
+      'creado_en',
+      'codigo',
+      'nombre',
+      'telefono',
+      'correo',
+      'entidad',
+      'uuid',
+    ]),
+  )
 
   var publico = libro.getSheetByName('publico')
   if (!publico) publico = libro.insertSheet('publico')

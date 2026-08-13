@@ -21,6 +21,7 @@ Apps Script comparten ámbito global, así que `Codigo.gs` ve esas funciones sin
 | `edificaciones` | Maestra. Una fila por edificación, con la columna `id`. | Sí |
 | `log` | Auditoría: cada envío crudo, antes de decidir nada. La crea sola si falta. | Se crea sola |
 | `cuadrillas` | Códigos autorizados, uno por fila en la columna A. | No — sin ella no se exige código |
+| `registros` | Registro en autoservicio (CU-12): contacto de quien pidió código desde el teléfono. El código asignado (R-01…) se anexa solo a `cuadrillas`, nunca a `coordinacion`. Privada. | Se crea sola |
 | `coordinacion` | Códigos que además pueden crear edificaciones y fusionar duplicados. Cuentan también como cuadrilla: no hay que repetirlos en `cuadrillas`. | No — sin ella no se permite coordinar |
 | `reportes` | Respuestas del Form de residentes. La ingesta las normaliza hacia `edificaciones`. | Solo para CU-01 |
 | `publico` | Fórmula que excluye contacto, fotos y duplicados. Es la que se publica como CSV. | Sí, para el mapa |
@@ -36,7 +37,7 @@ filas que tengan `duplicado_de`.
 2. **Extensiones → Apps Script**, y pegar los cuatro archivos de `src/` (los nombres dan igual; el
    orden tampoco, porque comparten ámbito global).
 3. Elegir la función **`instalar`** y ejecutarla. Crea `edificaciones`, `log`, `cuadrillas`,
-   `coordinacion` y `publico` con sus encabezados, y **genera la fórmula de `publico`**. Se puede
+   `coordinacion`, `registros` y `publico` con sus encabezados, y **genera la fórmula de `publico`**. Se puede
    volver a ejecutar cuantas veces se quiera: no pisa datos.
 4. Escribir los códigos en `cuadrillas` (uno por fila) y en `coordinacion` los de quien puede crear
    y fusionar. Un código de coordinación cuenta también como cuadrilla.

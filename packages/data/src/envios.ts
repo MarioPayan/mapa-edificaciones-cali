@@ -97,6 +97,44 @@ export function crearEnvio(
   }
 }
 
+/** CU-12: lo que pide el registro en autoservicio. Nombre y teléfono son el mínimo contactable. */
+export interface DatosRegistro {
+  nombre: string
+  telefono: string
+  correo: string
+  entidad: string
+}
+
+/**
+ * Registra una cuadrilla y devuelve el código asignado (R-01, R-02…).
+ *
+ * No pasa por la cola offline a propósito: la respuesta trae el código y sin él
+ * no hay nada que guardar en el teléfono. Registrarse exige señal — es un paso
+ * único; el trabajo de campo sigue funcionando sin red.
+ */
+export async function registrarCuadrilla(
+  urlEnvios: string,
+  datos: DatosRegistro,
+  fetchImpl: typeof fetch = fetch,
+): Promise<string> {
+  const respuesta = await fetchImpl(urlEnvios, {
+    method: 'POST',
+    // text/plain a propósito: application/json dispara un preflight OPTIONS que
+    // Apps Script no responde (mismo motivo que en la cola).
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    redirect: 'follow',
+    body: JSON.stringify({
+      uuid: nuevoUuid(),
+      tipo: 'registrar',
+      creadoEn: new Date().toISOString(),
+      datos,
+    }),
+  })
+  const cuerpo = (await respuesta.json()) as { ok?: boolean; codigo?: string; error?: string }
+  if (!cuerpo.ok || !cuerpo.codigo) throw new Error(cuerpo.error || 'registro_rechazado')
+  return cuerpo.codigo
+}
+
 /**
  * Pinta sobre las edificaciones los envíos que aún están en la cola.
  *

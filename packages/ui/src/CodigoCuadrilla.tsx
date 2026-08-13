@@ -3,14 +3,17 @@ import { useState } from 'react'
 export interface CodigoCuadrillaProps {
   cuadrilla: string
   onCambiar: (codigo: string) => void
+  /** Abre el registro en autoservicio (CU-12) para quien no tiene código. */
+  onRegistrar?: () => void
 }
 
 /**
  * Identificación mínima: un código de cuadrilla, escrito una vez y recordado en
- * el teléfono. Evita las colas de registro con nombre y correo que hoy retrasan
- * la salida a campo (R-12). Atribuye, no autentica, y así está declarado.
+ * el teléfono. Quien no tiene código se registra en autoservicio y recibe uno
+ * al instante — sin colas ni nadie que reparta (R-12). Atribuye, no autentica,
+ * y así está declarado.
  */
-export function CodigoCuadrilla({ cuadrilla, onCambiar }: CodigoCuadrillaProps) {
+export function CodigoCuadrilla({ cuadrilla, onCambiar, onRegistrar }: CodigoCuadrillaProps) {
   const [editando, setEditando] = useState(false)
   const [borrador, setBorrador] = useState(cuadrilla)
 
@@ -51,6 +54,18 @@ export function CodigoCuadrilla({ cuadrilla, onCambiar }: CodigoCuadrillaProps) 
       <button type="submit" className="d-boton d-boton--principal">
         Listo
       </button>
+      {onRegistrar && (
+        <button
+          type="button"
+          className="d-boton"
+          onClick={() => {
+            setEditando(false)
+            onRegistrar()
+          }}
+        >
+          ¿Sin código? Regístrese
+        </button>
+      )}
     </form>
   )
 }

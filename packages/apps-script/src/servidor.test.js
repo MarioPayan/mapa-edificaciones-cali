@@ -295,6 +295,58 @@ describe('ingerirReportes — CU-01', () => {
   })
 })
 
+describe('registrar — CU-12, código en autoservicio', () => {
+  const registro = (extra = {}) => ({
+    uuid: `u-${Math.random().toString(16).slice(2)}`,
+    tipo: 'registrar',
+    creadoEn: new Date().toISOString(),
+    datos: { nombre: 'Dania P.', telefono: '3001234567', correo: 'd@ejemplo.co', entidad: 'independiente' },
+    ...extra,
+  })
+
+  it('asigna códigos en serie, guarda el contacto y autoriza como cuadrilla', () => {
+    const primera = entorno.doPost(registro())
+    const segunda = entorno.doPost(registro())
+    expect(primera).toMatchObject({ ok: true, codigo: 'R-01' })
+    expect(segunda).toMatchObject({ ok: true, codigo: 'R-02' })
+
+    expect(entorno.libro.comoObjetos('registros')[0]).toMatchObject({
+      codigo: 'R-01',
+      nombre: 'Dania P.',
+      telefono: '3001234567',
+    })
+    // Autorizada como cuadrilla al instante — pero NUNCA como coordinación.
+    const cuadrillas = entorno.libro.comoObjetos('cuadrillas').map((f) => f.codigo)
+    expect(cuadrillas).toContain('R-01')
+    expect(entorno.libro.comoObjetos('coordinacion').map((f) => f.codigo)).not.toContain('R-01')
+  })
+
+  it('el código recién asignado ya puede reclamar', () => {
+    const codigo = entorno.doPost(registro()).codigo
+    const respuesta = entorno.doPost(envio({ cuadrilla: codigo }))
+    expect(respuesta.ok).toBe(true)
+    expect(fila('D-0001').reclamada_por).toBe(codigo)
+  })
+
+  it('el reintento del mismo registro devuelve el MISMO código', () => {
+    const intento = registro({ uuid: 'u-fijo' })
+    expect(entorno.doPost(intento).codigo).toBe('R-01')
+    expect(entorno.doPost(intento)).toMatchObject({ ok: true, codigo: 'R-01', repetido: true })
+    expect(entorno.libro.comoObjetos('registros')).toHaveLength(1)
+  })
+
+  it('rechaza un registro sin teléfono y no toca las pestañas', () => {
+    const respuesta = entorno.doPost(registro({ datos: { nombre: 'Ana', telefono: '' } }))
+    expect(respuesta).toMatchObject({ ok: false, error: 'falta_telefono' })
+    expect(entorno.libro.getSheetByName('registros')).toBeNull()
+  })
+
+  it('el contacto del registro nunca sale a la vista pública', () => {
+    entorno.doPost(registro())
+    expect(proyectarPublico(entorno.libro)).not.toContain('3001234567')
+    expect(proyectarPublico(entorno.libro)).not.toContain('Dania P.')
+  })
+})
 
 describe('geocodificarSinUbicar — importaciones por dirección', () => {
   function conImportadas(filas, geocodificar) {

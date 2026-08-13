@@ -226,10 +226,32 @@ function normalizarReporte(reporte, consecutivo, geocodificar) {
   }
 }
 
+/**
+ * CU-12: registro de cuadrilla en autoservicio. Se valida aparte de
+ * `validarEnvio` porque quien se registra todavía no tiene código — exigirle
+ * uno sería pedir la llave para entrar a pedir la llave. El mínimo es ser
+ * contactable: nombre y teléfono; correo y entidad son opcionales.
+ */
+function validarRegistro(envio) {
+  if (!envio || typeof envio !== 'object') return 'envio_ilegible'
+  if (!texto(envio.uuid)) return 'falta_uuid'
+  var d = envio.datos || {}
+  if (!texto(d.nombre)) return 'falta_nombre'
+  if (!texto(d.telefono)) return 'falta_telefono'
+  return ''
+}
+
+/** Código autoasignado: R-01, R-02… La R distingue lo autorregistrado de los códigos que reparte coordinación. */
+function codigoDeRegistro(consecutivo) {
+  return 'R-' + String(consecutivo).padStart(2, '0')
+}
+
 if (typeof module !== 'undefined') {
   module.exports = {
     HORAS_RECLAMO,
     validarEnvio,
+    validarRegistro,
+    codigoDeRegistro,
     decidir,
     reclamoVigente,
     fechaDeCampo,

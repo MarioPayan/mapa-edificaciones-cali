@@ -533,6 +533,35 @@ const main = async () => {
     puedeReclamarVisitada === 0 && yaVisitada.includes('Visitada'))
   await cerrarFicha()
 
+  // ─────────────────────────────────────────────────────────────── CU-12
+  console.log('CU-12 — Registrarse y recibir un código en autoservicio')
+  // Contra lo desplegado (modo práctica) el código se asigna localmente: R-01.
+  if (CON_ENDPOINT) respuestaFalsa = { ok: true, codigo: 'R-09' }
+  const codigoEsperado = CON_ENDPOINT ? 'R-09' : 'R-01'
+  await pagina.locator('.d-cuadrilla').first().click()
+  await pagina.getByRole('button', { name: '¿Sin código? Regístrese' }).click()
+  await pagina.getByLabel('Nombre').fill('Dania Prueba')
+  await pagina.getByLabel('Teléfono').fill('3001112233')
+  await pagina.getByRole('button', { name: 'Registrarme' }).click()
+  const confirmacionRegistro = await pagina
+    .waitForSelector(`text=${codigoEsperado}`, { timeout: 5000 })
+    .then(() => true)
+    .catch(() => false)
+  comprobar('CU-12', 'el registro devuelve un código al instante', confirmacionRegistro,
+    codigoEsperado)
+  await pagina.getByRole('button', { name: 'Listo', exact: true }).click()
+  const encabezadoCuadrilla = (await pagina.locator('.d-cuadrilla').first().textContent()) ?? ''
+  comprobar('CU-12', 'el código queda puesto como cuadrilla',
+    encabezadoCuadrilla.includes(codigoEsperado), encabezadoCuadrilla.trim())
+  if (CON_ENDPOINT) {
+    const registroEnviado = recibidos[recibidos.length - 1]
+    comprobar('CU-12', 'el envío lleva tipo registrar y el contacto',
+      registroEnviado?.tipo === 'registrar' && registroEnviado?.datos?.telefono === '3001112233')
+    respuestaFalsa = { ok: true }
+  }
+  // Los CU siguientes no heredan el código registrado.
+  await ponerCodigo('C-07')
+
   // ────────────────────────────────────────── Conexión con la hoja (sin repo)
   console.log('Conexión — apuntar la aplicación a una hoja desde el teléfono')
   await pagina.goto(`${BASE}?csv=${encodeURIComponent('https://hoja-de-prueba.test/publico.csv')}`, {

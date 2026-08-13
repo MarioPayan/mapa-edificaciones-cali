@@ -171,6 +171,32 @@ try {
   comprobar('al volver la red el reclamo llegó a la hoja',
     hoja.fila(segunda.id).reclamada_por === 'C-07')
 
+  // ── Registrarse (CU-12): el código lo asigna el doPost de verdad
+  await pagina.locator('.d-cuadrilla').first().click()
+  await pagina.getByRole('button', { name: '¿Sin código? Regístrese' }).click()
+  await pagina.getByLabel('Nombre').fill('Dania Prueba')
+  await pagina.getByLabel('Teléfono').fill('3019876543')
+  await pagina.getByRole('button', { name: 'Registrarme' }).click()
+  await pagina.waitForSelector('text=R-01', { timeout: 10000 })
+  await pagina.getByRole('button', { name: 'Listo', exact: true }).click()
+
+  const registrada = hoja.entorno.libro.comoObjetos('registros')[0]
+  comprobar('el registro quedó en la hoja con su contacto',
+    registrada?.codigo === 'R-01' && registrada?.telefono === '3019876543')
+  comprobar('el código quedó autorizado como cuadrilla',
+    hoja.entorno.libro.comoObjetos('cuadrillas').some((f) => f.codigo === 'R-01'))
+
+  const tercera = hoja.entorno.libro
+    .comoObjetos('edificaciones')
+    .find((f) => f.estado === 'NARANJA' && !f.reclamada_por && f.lat_reporte)
+  await abrirPorId(tercera.id)
+  await pagina.getByRole('button', { name: 'Reclamar', exact: true }).click()
+  await pagina.waitForTimeout(1200)
+  comprobar('el código recién asignado ya puede reclamar',
+    hoja.fila(tercera.id).reclamada_por === 'R-01',
+    `reclamada_por = ${hoja.fila(tercera.id).reclamada_por || '(vacío)'}`)
+  await pagina.getByRole('button', { name: 'Cerrar' }).last().click()
+
   const uuids = hoja.peticiones.map((e) => e.uuid)
   comprobar('ningún envío se mandó dos veces', new Set(uuids).size === uuids.length,
     `${uuids.length} envíos, ${new Set(uuids).size} uuids`)

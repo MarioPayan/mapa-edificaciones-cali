@@ -12,6 +12,7 @@ var HOJA_EDIFICACIONES = 'edificaciones'
 var HOJA_LOG = 'log'
 var HOJA_CUADRILLAS = 'cuadrillas'
 var HOJA_COORDINACION = 'coordinacion'
+var HOJA_REGISTROS = 'registros'
 
 function doPost(e) {
   try {
@@ -29,6 +30,10 @@ function procesar(envio) {
   // Se registra todo lo que llega, incluso lo que se va a rechazar: el `log` es
   // la red de seguridad y no depende de que la lógica acierte.
   var filaLog = registrarEnLog(libro, envio)
+
+  // El registro de cuadrilla (CU-12) no toca `edificaciones` y se atiende antes
+  // de exigir código: quien se registra todavía no tiene uno.
+  if (envio && envio.tipo === 'registrar') return procesarRegistro(libro, envio, filaLog)
 
   var problema = validarEnvio(
     envio,
@@ -88,6 +93,58 @@ function procesar(envio) {
     escribirCambios(hoja, encabezado, numeroFila, decision.cambios, envio.uuid)
     marcarAplicado(libro, filaLog)
     return { ok: true, edificacionId: envio.edificacionId, cambios: decision.cambios }
+  } finally {
+    candado.releaseLock()
+  }
+}
+
+/**
+ * CU-12: asigna un código de cuadrilla en autoservicio. El contacto queda en
+ * `registros` (pestaña privada: nunca entra a la fórmula de `publico`) y el
+ * código entra a `cuadrillas` al instante — como cuadrilla, nunca como
+ * coordinación. Sigue siendo atribución, no seguridad: lo que cambia es que
+ * nadie tiene que esperar a que le repartan un código (R-12).
+ */
+function procesarRegistro(libro, envio, filaLog) {
+  var problema = validarRegistro(envio)
+  if (problema) return { ok: false, error: problema }
+
+  var candado = LockService.getScriptLock()
+  if (!candado.tryLock(15000)) return { ok: false, error: 'ocupado_reintente' }
+
+  try {
+    var hoja = libro.getSheetByName(HOJA_REGISTROS)
+    if (!hoja) {
+      hoja = libro.insertSheet(HOJA_REGISTROS)
+      hoja.appendRow(['creado_en', 'codigo', 'nombre', 'telefono', 'correo', 'entidad', 'uuid'])
+    }
+
+    // El reintento de un registro devuelve el MISMO código: dos códigos para la
+    // misma persona partirían su atribución en dos.
+    var filas = hoja.getDataRange().getValues()
+    for (var i = 1; i < filas.length; i++) {
+      if (String(filas[i][6]) === String(envio.uuid)) {
+        return { ok: true, codigo: String(filas[i][1]), repetido: true }
+      }
+    }
+
+    var d = envio.datos || {}
+    var codigo = codigoDeRegistro(filas.length)
+    hoja.appendRow([
+      new Date().toISOString(),
+      codigo,
+      texto(d.nombre),
+      texto(d.telefono),
+      texto(d.correo),
+      texto(d.entidad),
+      texto(envio.uuid),
+    ])
+
+    var cuadrillas = libro.getSheetByName(HOJA_CUADRILLAS)
+    if (cuadrillas) cuadrillas.appendRow([codigo])
+
+    marcarAplicado(libro, filaLog)
+    return { ok: true, codigo: codigo }
   } finally {
     candado.releaseLock()
   }

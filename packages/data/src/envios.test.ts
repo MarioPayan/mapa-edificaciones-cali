@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parsearEdificaciones } from './edificaciones.ts'
-import { aplicarEnvios, crearEnvio, type Envio } from './envios.ts'
+import { aplicarEnvios, crearEnvio, registrarCuadrilla, type Envio } from './envios.ts'
 
 const CSV = `id,estado,reclamada_por,reclamada_en,lat_reporte,lon_reporte,precision_reporte,caracterizacion
 E-1,NARANJA,,,3.1,-76.1,geocodificada,
@@ -74,5 +74,32 @@ describe('aplicarEnvios', () => {
 
   it('cada envío lleva su propio uuid', () => {
     expect(envio('reclamar').uuid).not.toBe(envio('reclamar').uuid)
+  })
+})
+
+describe('registrarCuadrilla — CU-12', () => {
+  const DATOS = { nombre: 'Dania', telefono: '3001234567', correo: '', entidad: '' }
+  const respuestaFalsa = (cuerpo: unknown) =>
+    (() => Promise.resolve({ json: () => Promise.resolve(cuerpo) } as Response)) as typeof fetch
+
+  it('manda el registro como text/plain y devuelve el código asignado', async () => {
+    let capturado: RequestInit | undefined
+    const fetchFalso = ((url: string, init: RequestInit) => {
+      capturado = init
+      return Promise.resolve({ json: () => Promise.resolve({ ok: true, codigo: 'R-07' }) } as Response)
+    }) as unknown as typeof fetch
+
+    await expect(registrarCuadrilla('https://hoja/exec', DATOS, fetchFalso)).resolves.toBe('R-07')
+    const cuerpo = JSON.parse(String(capturado?.body)) as Record<string, unknown>
+    expect(cuerpo).toMatchObject({ tipo: 'registrar', datos: DATOS })
+    expect(cuerpo['uuid']).toBeTruthy()
+    // text/plain a propósito: application/json dispara un preflight que Apps Script no responde.
+    expect((capturado?.headers as Record<string, string>)['Content-Type']).toContain('text/plain')
+  })
+
+  it('un rechazo del servidor se convierte en error con su motivo', async () => {
+    await expect(
+      registrarCuadrilla('https://hoja/exec', DATOS, respuestaFalsa({ ok: false, error: 'falta_telefono' })),
+    ).rejects.toThrow('falta_telefono')
   })
 })

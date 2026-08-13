@@ -4,10 +4,12 @@ import {
   filtrar,
   FILTRO_VACIO,
   necesitaUbicacion,
+  registrarCuadrilla,
   sinDuplicados,
   type DatosCaracterizar,
   type DatosColapsar,
   type DatosCrear,
+  type DatosRegistro,
   type Edificacion,
   type Filtro,
 } from '@dania/data'
@@ -20,6 +22,7 @@ import {
   FichaEdificacion,
   FiltroBarra,
   FormularioCrear,
+  FormularioRegistro,
   ListaEdificaciones,
   MapaEdificaciones,
   ConfirmarConexion,
@@ -128,7 +131,7 @@ export function App() {
   })
   const [modoPunto, setModoPunto] = useState<ModoPunto>(null)
   const [panel, setPanel] = useState<
-    'ninguno' | 'filtros' | 'ayuda' | 'coordinacion' | 'conexion'
+    'ninguno' | 'filtros' | 'ayuda' | 'coordinacion' | 'conexion' | 'registro'
   >('ninguno')
   const [puntoCreacion, setPuntoCreacion] = useState<{ lat: number; lon: number } | null>(null)
   const [ubicando, setUbicando] = useState(false)
@@ -169,6 +172,20 @@ export function App() {
     localStorage.setItem(CLAVE_CUADRILLA, codigo)
     setCuadrilla(codigo)
   }, [])
+
+  /**
+   * CU-12: registro en autoservicio. En práctica no hay servidor: se asigna un
+   * código local para poder ensayar el flujo completo — igual que el resto del
+   * modo práctica, no sale del teléfono.
+   */
+  const registrar = useCallback(
+    async (datos: DatosRegistro) => {
+      const codigo = ES_PRACTICA ? 'R-01' : await registrarCuadrilla(URL_ENVIOS, datos)
+      guardarCuadrilla(codigo)
+      return codigo
+    },
+    [ES_PRACTICA, URL_ENVIOS, guardarCuadrilla],
+  )
 
   const abrirCoordinacion = useCallback(() => {
     localStorage.setItem(CLAVE_COORDINACION, 'si')
@@ -282,7 +299,11 @@ export function App() {
           <h1>Edificaciones afectadas</h1>
           <div className="a-encabezado__acciones">
             {(URL_ENVIOS || ES_PRACTICA) && (
-              <CodigoCuadrilla cuadrilla={cuadrilla} onCambiar={guardarCuadrilla} />
+              <CodigoCuadrilla
+                cuadrilla={cuadrilla}
+                onCambiar={guardarCuadrilla}
+                onRegistrar={() => setPanel('registro')}
+              />
             )}
             <button
               className="d-boton d-boton--icono"
@@ -380,7 +401,10 @@ export function App() {
       {URL_ENVIOS && !cuadrilla && (
         <Aviso tono="info">
           Pongan el código de su cuadrilla arriba para poder reclamar y caracterizar. Sin código, el
-          mapa es de solo lectura.
+          mapa es de solo lectura.{' '}
+          <button className="d-boton" onClick={() => setPanel('registro')}>
+            ¿Sin código? Regístrese
+          </button>
         </Aviso>
       )}
 
@@ -524,6 +548,14 @@ export function App() {
             )}
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        abierto={panel === 'registro'}
+        titulo="Registro de cuadrilla"
+        onCerrar={() => setPanel('ninguno')}
+      >
+        <FormularioRegistro onRegistrar={registrar} onCerrar={() => setPanel('ninguno')} />
       </Modal>
 
       <Modal

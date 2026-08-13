@@ -16,6 +16,7 @@ export {
   type FormularioCaracterizarProps,
   type FormularioColapsoProps,
 } from './FormularioVisita.tsx'
+export { FormularioRegistro, type FormularioRegistroProps } from './FormularioRegistro.tsx'
 export { contarFiltrosDeZona, FiltroBarra, type FiltroBarraProps } from './FiltroBarra.tsx'
 export { ListaEdificaciones, type ListaEdificacionesProps } from './ListaEdificaciones.tsx'
 export { Modal, type ModalProps } from './Modal.tsx'

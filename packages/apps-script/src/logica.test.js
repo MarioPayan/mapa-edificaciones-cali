@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import logica from './logica.js'
 
-const { validarEnvio, decidir } = logica
+const { validarEnvio, validarRegistro, codigoDeRegistro, decidir } = logica
 
 const AHORA = new Date('2026-08-12T14:00:00.000Z').getTime()
 
@@ -42,6 +42,10 @@ describe('validarEnvio', () => {
     expect(validarEnvio(envio({ cuadrilla: 'C-99' }), [])).toBe('')
   })
 
+  it('rechaza «registrar» como envío normal: se atiende por otro camino', () => {
+    expect(validarEnvio(envio({ tipo: 'registrar' }), [])).toBe('tipo_desconocido')
+  })
+
   it('rechaza coordenadas ausentes o fuera de Colombia', () => {
     const ubicar = (datos) => validarEnvio(envio({ tipo: 'ubicar', datos }), [])
     expect(ubicar({ lat: 3.49, lon: -76.52 })).toBe('')
@@ -49,6 +53,32 @@ describe('validarEnvio', () => {
     // (0,0) es el destino clásico de un GPS mal leído.
     expect(ubicar({ lat: 0, lon: 0 })).toBe('coordenada_fuera_de_rango')
     expect(ubicar({ lat: 40.7, lon: -74 })).toBe('coordenada_fuera_de_rango')
+  })
+})
+
+describe('validarRegistro — CU-12', () => {
+  const registro = (datos) => ({ uuid: 'u-1', tipo: 'registrar', datos })
+
+  it('acepta el mínimo contactable: nombre y teléfono', () => {
+    expect(validarRegistro(registro({ nombre: 'Dania', telefono: '3001234567' }))).toBe('')
+  })
+
+  it('no exige código de cuadrilla: quien se registra todavía no tiene uno', () => {
+    // A propósito no hay campo `cuadrilla` en el registro.
+    expect(validarRegistro(registro({ nombre: 'Dania', telefono: '3001234567' }))).toBe('')
+  })
+
+  it('rechaza lo incompleto', () => {
+    expect(validarRegistro(null)).toBe('envio_ilegible')
+    expect(validarRegistro({ tipo: 'registrar', datos: { nombre: 'Dania', telefono: '300' } })).toBe('falta_uuid')
+    expect(validarRegistro(registro({ telefono: '3001234567' }))).toBe('falta_nombre')
+    expect(validarRegistro(registro({ nombre: 'Dania' }))).toBe('falta_telefono')
+  })
+
+  it('los códigos se asignan en serie', () => {
+    expect(codigoDeRegistro(1)).toBe('R-01')
+    expect(codigoDeRegistro(12)).toBe('R-12')
+    expect(codigoDeRegistro(120)).toBe('R-120')
   })
 })
 
