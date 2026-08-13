@@ -82,6 +82,49 @@ describe('validarRegistro — CU-12', () => {
   })
 })
 
+describe('crear — también sin coordenada, con procedencia', () => {
+  const crear = (datos) =>
+    envio({ tipo: 'crear', edificacionId: 'N-1', cuadrilla: 'K-01', datos })
+
+  it('sin coordenada entra «sin ubicar»: un reporte recibido por teléfono', () => {
+    expect(validarEnvio(crear({ direccionTexto: 'Calle 9 8-7' }), [], ['K-01'])).toBe('')
+    const r = decidir(crear({ direccionTexto: 'Calle 9 8-7' }), {}, AHORA)
+    expect(r.cambios).toMatchObject({ lat_reporte: '', precision_reporte: 'sin_ubicar' })
+  })
+
+  it('si trae coordenada, tiene que ser creíble', () => {
+    expect(
+      validarEnvio(crear({ direccionTexto: 'X', lat: 0, lon: 0 }), [], ['K-01']),
+    ).toBe('coordenada_fuera_de_rango')
+  })
+
+  it('una importación conserva su procedencia, fecha y observaciones', () => {
+    const r = decidir(
+      crear({
+        direccionTexto: 'Carrera 44 con calle 5',
+        origen: 'my_maps',
+        creadoEn: '2026-08-10',
+        observaciones: 'TIPO DE DAÑO: Colapso estructural.',
+        fallecidosAtrapados: 'Sí',
+      }),
+      {},
+      AHORA,
+    )
+    expect(r.cambios).toMatchObject({
+      origen: 'my_maps',
+      creado_en: '2026-08-10',
+      observaciones: 'TIPO DE DAÑO: Colapso estructural.',
+      fallecidos_atrapados: 'Sí',
+    })
+  })
+
+  it('sin procedencia sigue siendo de coordinación, con la fecha del servidor', () => {
+    const r = decidir(crear({ direccionTexto: 'X', lat: 3.45, lon: -76.52 }), {}, AHORA)
+    expect(r.cambios).toMatchObject({ origen: 'coordinacion', precision_reporte: 'manual' })
+    expect(r.cambios.creado_en).toBe(new Date(AHORA).toISOString())
+  })
+})
+
 describe('reportar — CU-13, la puerta del residente', () => {
   const reporte = (datos = {}) =>
     envio({

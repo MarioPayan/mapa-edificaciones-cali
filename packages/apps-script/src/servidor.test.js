@@ -424,6 +424,26 @@ describe('doGet — el web app sirve la vista pública como CSV', () => {
     entorno.doPost(envio())
     expect(entorno.doGet()).toContain('C-07')
   })
+
+  it('la acción geocodificar exige código de coordinación', () => {
+    expect(entorno.doGet({ accion: 'geocodificar' })).toBe('requiere_coordinacion')
+    expect(entorno.doGet({ accion: 'geocodificar', codigo: 'C-07' })).toBe('requiere_coordinacion')
+  })
+
+  it('con código de coordinación, geocodifica lo pendiente y responde el conteo', () => {
+    const e = crearEntorno({
+      hojas: {
+        ...hojasBase(),
+        edificaciones: [
+          COLUMNAS_EDIFICACIONES,
+          filaEdificacion({ id: 'M-0001', direccion_texto: 'Calle 9 8-7', precision_reporte: 'sin_ubicar' }),
+        ],
+      },
+      geocodificar: () => ({ lat: 3.44, lng: -76.51 }),
+    })
+    expect(e.doGet({ accion: 'geocodificar', codigo: 'K-01' })).toBe('geocodificadas: 1')
+    expect(e.libro.comoObjetos('edificaciones')[0]).toMatchObject({ precision_reporte: 'geocodificada' })
+  })
 })
 
 describe('geocodificarSinUbicar — importaciones por dirección', () => {

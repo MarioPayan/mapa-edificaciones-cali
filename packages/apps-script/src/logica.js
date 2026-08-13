@@ -78,7 +78,13 @@ function validarEnvio(envio, cuadrillasValidas, codigosCoordinacion) {
   }
 
   var d = envio.datos || {}
-  if (envio.tipo === 'ubicar' || envio.tipo === 'crear') {
+  if (envio.tipo === 'ubicar') {
+    if (typeof d.lat !== 'number' || typeof d.lon !== 'number') return 'coordenada_invalida'
+    if (!coordenadaPlausible(d.lat, d.lon)) return 'coordenada_fuera_de_rango'
+  }
+  // Crear admite no traer coordenada: un reporte recibido por teléfono entra
+  // «sin ubicar» y se coloca tocando el mapa (CU-11). Si la trae, que valga.
+  if (envio.tipo === 'crear' && (d.lat !== undefined || d.lon !== undefined)) {
     if (typeof d.lat !== 'number' || typeof d.lon !== 'number') return 'coordenada_invalida'
     if (!coordenadaPlausible(d.lat, d.lon)) return 'coordenada_fuera_de_rango'
   }
@@ -141,21 +147,28 @@ function decidir(envio, fila, ahoraMs) {
       // el duplicado conserva todos sus datos y solo sale de `publico`.
       return { ok: true, cambios: { duplicado_de: texto(datos.duplicadoDe) } }
 
-    case 'crear':
+    case 'crear': {
+      var ubicada = typeof datos.lat === 'number' && typeof datos.lon === 'number'
       return {
         ok: true,
         cambios: {
           direccion_texto: texto(datos.direccionTexto),
           barrio: texto(datos.barrio),
           comuna: texto(datos.comuna),
-          lat_reporte: datos.lat,
-          lon_reporte: datos.lon,
-          precision_reporte: 'manual',
+          lat_reporte: ubicada ? datos.lat : '',
+          lon_reporte: ubicada ? datos.lon : '',
+          precision_reporte: ubicada ? 'manual' : 'sin_ubicar',
           estado: datos.estado === 'ROJO' || datos.estado === 'VERDE' ? datos.estado : 'NARANJA',
-          origen: 'coordinacion',
-          creado_en: ahoraISO,
+          // La procedencia se conserva cuando viene (una importación la trae);
+          // sin ella, la fila es de coordinación.
+          origen: texto(datos.origen) || 'coordinacion',
+          creado_en: texto(datos.creadoEn) || ahoraISO,
+          tipo_edificacion: texto(datos.tipoEdificacion),
+          fallecidos_atrapados: texto(datos.fallecidosAtrapados),
+          observaciones: texto(datos.observaciones),
         },
       }
+    }
 
     case 'reportar': {
       // CU-13: «vengan, revisen mi casa». El GPS del residente vale como pista

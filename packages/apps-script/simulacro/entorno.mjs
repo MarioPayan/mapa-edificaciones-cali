@@ -212,8 +212,9 @@ export function crearEntorno({ hojas = {}, geocodificar = () => null, candadoOcu
     },
     ingerirReportes: () => contexto.ingerirReportes(),
     instalar: () => contexto.instalar(),
-    /** Llama a `doGet` y devuelve el CSV como texto. */
-    doGet: () => contexto.doGet().getContent(),
+    /** Llama a `doGet` y devuelve la respuesta como texto. Acepta parámetros de URL. */
+    doGet: (parametros) =>
+      contexto.doGet(parametros ? { parameter: parametros } : undefined).getContent(),
   }
 }
 

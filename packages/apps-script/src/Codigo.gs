@@ -21,11 +21,29 @@ var HOJA_REGISTROS = 'registros'
  * con las mismas exclusiones que la fórmula de `publico` (contacto, fotos,
  * duplicados). Una sola URL para leer (GET) y escribir (POST).
  */
-function doGet() {
+function doGet(e) {
   var libro = SpreadsheetApp.getActive()
   // Primer toque sobre una hoja virgen: se instala sola. La puesta en marcha
   // queda en subir el código y abrir esta URL una vez.
   if (!libro.getSheetByName(HOJA_EDIFICACIONES)) instalar()
+
+  // Acción administrativa: geocodificar lo «sin ubicar» que trae dirección
+  // (p. ej. tras una importación). Exige un código de coordinación, como todo
+  // lo que cambia el universo de puntos.
+  var parametros = (e && e.parameter) || {}
+  if (parametros.accion === 'geocodificar') {
+    var codigos = codigosDe(libro, HOJA_COORDINACION)
+    if (codigos.length === 0 || codigos.indexOf(String(parametros.codigo || '').trim()) === -1) {
+      return ContentService.createTextOutput('requiere_coordinacion').setMimeType(
+        ContentService.MimeType.TEXT,
+      )
+    }
+    var hechas = geocodificarSinUbicar()
+    return ContentService.createTextOutput('geocodificadas: ' + hechas).setMimeType(
+      ContentService.MimeType.TEXT,
+    )
+  }
+
   return ContentService.createTextOutput(csvPublico(libro)).setMimeType(ContentService.MimeType.CSV)
 }
 
