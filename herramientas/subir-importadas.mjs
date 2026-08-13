@@ -44,13 +44,23 @@ for (const fila of filas) {
     },
   }
 
-  const respuesta = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    redirect: 'follow',
-    body: JSON.stringify(envio),
-  })
-  const cuerpo = await respuesta.json().catch(() => ({ ok: false, error: 'respuesta_ilegible' }))
+  // Un web app recién implementado responde a ratos la página de error de
+  // Drive mientras Google lo propaga: se reintenta antes de dar la fila por
+  // fallida. El uuid fijo hace inocuo cualquier reintento de más.
+  let cuerpo = { ok: false, error: 'respuesta_ilegible' }
+  for (let intento = 0; intento < 3; intento++) {
+    const respuesta = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      redirect: 'follow',
+      body: JSON.stringify(envio),
+    }).catch(() => null)
+    cuerpo = respuesta
+      ? await respuesta.json().catch(() => ({ ok: false, error: 'respuesta_ilegible' }))
+      : { ok: false, error: 'sin_respuesta' }
+    if (cuerpo.ok || cuerpo.error === 'ya_existe') break
+    await new Promise((r) => setTimeout(r, 1500))
+  }
 
   if (cuerpo.ok) subidas++
   else if (cuerpo.error === 'ya_existe') yaExistian++

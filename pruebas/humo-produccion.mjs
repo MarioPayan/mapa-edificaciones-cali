@@ -25,17 +25,34 @@ const comprobar = (titulo, condicion, detalle = '') => {
   console.log(`  ${condicion ? '✓' : '✗'} ${titulo}${detalle ? ` — ${detalle}` : ''}`)
 }
 
+// Un web app recién implementado responde a ratos la página de error de Drive
+// mientras Google lo propaga: cada llamada se reintenta un par de veces.
 const post = async (envio) => {
-  const respuesta = await fetch(url, {
-    method: 'POST',
-    // text/plain a propósito: como el cliente real, sin preflight.
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    redirect: 'follow',
-    body: JSON.stringify(envio),
-  })
-  return respuesta.json()
+  for (let intento = 0; intento < 3; intento++) {
+    const respuesta = await fetch(url, {
+      method: 'POST',
+      // text/plain a propósito: como el cliente real, sin preflight.
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      redirect: 'follow',
+      body: JSON.stringify(envio),
+    }).catch(() => null)
+    const cuerpo = respuesta ? await respuesta.json().catch(() => null) : null
+    if (cuerpo) return cuerpo
+    await new Promise((r) => setTimeout(r, 1500))
+  }
+  return { ok: false, error: 'sin_respuesta' }
 }
-const leerCSV = async () => (await fetch(url, { redirect: 'follow' })).text()
+const leerCSV = async () => {
+  for (let intento = 0; intento < 3; intento++) {
+    const respuesta = await fetch(url, { redirect: 'follow' }).catch(() => null)
+    if (respuesta && respuesta.ok) {
+      const texto = await respuesta.text()
+      if (texto.startsWith('id,') || texto.includes('\nid,') || !texto.startsWith('<')) return texto
+    }
+    await new Promise((r) => setTimeout(r, 1500))
+  }
+  return ''
+}
 const uuid = () => `humo-${Date.now()}-${Math.random().toString(16).slice(2)}`
 const ahora = () => new Date().toISOString()
 
@@ -46,9 +63,10 @@ const antes = await leerCSV()
 comprobar('GET responde el CSV con su encabezado', antes.split('\n')[0]?.includes('id,'))
 comprobar('sin columnas de contacto', !antes.split('\n')[0]?.includes('contacto_'))
 
-// 2. CU-12: registro de cuadrilla en autoservicio.
+// 2. CU-12: registro de cuadrilla en autoservicio. El uuid es FIJO a propósito:
+// correr el humo mil veces deja UN solo registro de prueba, no mil códigos.
 const registro = await post({
-  uuid: uuid(),
+  uuid: 'humo-registro-fijo',
   tipo: 'registrar',
   creadoEn: ahora(),
   datos: { nombre: 'Prueba Humo', telefono: '3000000000', correo: '', entidad: 'prueba' },
