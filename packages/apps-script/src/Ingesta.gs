@@ -60,6 +60,58 @@ function ingerirReportes() {
 }
 
 /**
+ * Ubica las filas de `edificaciones` que están «sin ubicar» pero traen
+ * dirección. Existe para las importaciones por dirección
+ * (herramientas/importar-mymaps.mjs): My Maps muchas veces no exporta la
+ * coordenada, solo la dirección. Se ejecuta a mano después de pegar una
+ * importación; correrla de nuevo solo toca lo que siga sin ubicar.
+ */
+function geocodificarSinUbicar() {
+  var hoja = SpreadsheetApp.getActive().getSheetByName(HOJA_EDIFICACIONES)
+  if (!hoja) return 0
+
+  var candado = LockService.getScriptLock()
+  if (!candado.tryLock(30000)) return 0
+
+  try {
+    var filas = hoja.getDataRange().getValues()
+    if (filas.length < 2) return 0
+    var encabezado = filas[0].map(normalizar)
+    var iDireccion = encabezado.indexOf('direccion_texto')
+    var iBarrio = encabezado.indexOf('barrio')
+    var iLat = encabezado.indexOf('lat_reporte')
+    var iLon = encabezado.indexOf('lon_reporte')
+    var iPrecision = encabezado.indexOf('precision_reporte')
+    if (iDireccion === -1 || iLat === -1 || iLon === -1 || iPrecision === -1) return 0
+
+    var hechas = 0
+    for (var i = 1; i < filas.length; i++) {
+      if (filas[i][iPrecision] !== 'sin_ubicar') continue
+      var direccion = String(filas[i][iDireccion] || '').trim()
+      if (!direccion) continue
+
+      var barrio = iBarrio === -1 ? '' : String(filas[i][iBarrio] || '').trim()
+      var punto = null
+      try {
+        punto = geocodificarEnCali(direccion + (barrio ? ', ' + barrio : '') + ', Cali, Colombia')
+      } catch (error) {
+        punto = null
+      }
+      if (!punto) continue
+
+      hoja.getRange(i + 1, iLat + 1).setValue(punto.lat)
+      hoja.getRange(i + 1, iLon + 1).setValue(punto.lon)
+      hoja.getRange(i + 1, iPrecision + 1).setValue('geocodificada')
+      hechas++
+    }
+    Logger.log(hechas + ' filas geocodificadas')
+    return hechas
+  } finally {
+    candado.releaseLock()
+  }
+}
+
+/**
  * Geocodificación aproximada. Basta para saber a qué manzana ir: la ubicación
  * que vale la pone la cuadrilla en sitio (R-09).
  * Devuelve {lat, lon} o null.

@@ -7,7 +7,7 @@ Es el **único** lugar donde algo se escribe: el mapa solo lee el CSV publicado.
 |---------|--------|
 | `src/logica.js` | Las reglas (validación, conflicto de reclamos, qué columna cambia). Sin dependencias y probado con vitest. |
 | `src/Codigo.gs` | El pegamento con Google: `doPost`, candado, `log`, búsqueda de la fila. |
-| `src/Ingesta.gs` | Trae los reportes del Form a `edificaciones` y los geocodifica (CU-01). |
+| `src/Ingesta.gs` | Trae los reportes del Form a `edificaciones` y los geocodifica (CU-01). También `geocodificarSinUbicar`, que ubica lo importado por dirección con `herramientas/importar-mymaps.mjs`. |
 | `src/Instalar.gs` | Deja la hoja lista de una ejecución: pestañas, encabezados y la fórmula de `publico`. |
 
 `logica.js` termina con `if (typeof module !== 'undefined') module.exports = …`. En Node eso permite

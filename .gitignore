@@ -11,6 +11,9 @@ dist/
 *.mp4
 frames/
 transcripcion.md
+# Igual el feedback de campo: notas de voz, captura del mapa real de la sala de
+# crisis y su consolidado. Lo accionable ya está convertido en código y casos.
+feedback/
 
 # El plan de implementación cita textualmente esas notas de voz, con la
 # dirección exacta de un inmueble y opiniones sobre instituciones concretas.

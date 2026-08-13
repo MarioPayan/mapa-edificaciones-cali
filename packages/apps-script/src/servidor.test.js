@@ -295,6 +295,75 @@ describe('ingerirReportes — CU-01', () => {
   })
 })
 
+
+describe('geocodificarSinUbicar — importaciones por dirección', () => {
+  function conImportadas(filas, geocodificar) {
+    return crearEntorno({
+      hojas: {
+        ...hojasBase(),
+        edificaciones: [COLUMNAS_EDIFICACIONES, ...filas.map(filaEdificacion)],
+      },
+      geocodificar,
+    })
+  }
+
+  it('ubica lo «sin ubicar» que trae dirección, con el barrio como pista', () => {
+    const direcciones = []
+    const e = conImportadas(
+      [{ id: 'M-0001', estado: 'ROJO', direccion_texto: 'Carrera 44 con calle 5', barrio: 'El Lido', precision_reporte: 'sin_ubicar' }],
+      (direccion) => {
+        direcciones.push(direccion)
+        return { lat: 3.42, lng: -76.54 }
+      },
+    )
+    expect(e.contexto.geocodificarSinUbicar()).toBe(1)
+    expect(e.libro.comoObjetos('edificaciones').find((f) => f.id === 'M-0001')).toMatchObject({
+      lat_reporte: 3.42,
+      lon_reporte: -76.54,
+      precision_reporte: 'geocodificada',
+    })
+    expect(direcciones[0]).toBe('Carrera 44 con calle 5, El Lido, Cali, Colombia')
+  })
+
+  it('no toca lo ya ubicado ni lo que no tiene dirección', () => {
+    const e = conImportadas(
+      [
+        { id: 'M-0001', direccion_texto: 'Calle 9 8-7', precision_reporte: 'manual', lat_reporte: 3.4, lon_reporte: -76.5 },
+        { id: 'M-0002', direccion_texto: '', precision_reporte: 'sin_ubicar' },
+      ],
+      () => ({ lat: 3.9, lng: -76.9 }),
+    )
+    expect(e.contexto.geocodificarSinUbicar()).toBe(0)
+    expect(e.libro.comoObjetos('edificaciones').find((f) => f.id === 'M-0001')).toMatchObject({
+      lat_reporte: 3.4,
+      precision_reporte: 'manual',
+    })
+    expect(e.libro.comoObjetos('edificaciones').find((f) => f.id === 'M-0002')).toMatchObject({
+      lat_reporte: '',
+      precision_reporte: 'sin_ubicar',
+    })
+  })
+
+  it('lo que el geocodificador no encuentra (o lo revienta) sigue sin ubicar', () => {
+    const e = conImportadas(
+      [
+        { id: 'M-0001', direccion_texto: 'hotel la luna', precision_reporte: 'sin_ubicar' },
+        { id: 'M-0002', direccion_texto: 'Calle 1 2-3', precision_reporte: 'sin_ubicar' },
+      ],
+      (direccion) => {
+        if (direccion.indexOf('hotel') === 0) throw new Error('cuota agotada')
+        return null
+      },
+    )
+    expect(() => e.contexto.geocodificarSinUbicar()).not.toThrow()
+    for (const id of ['M-0001', 'M-0002']) {
+      expect(e.libro.comoObjetos('edificaciones').find((f) => f.id === id)).toMatchObject({
+        precision_reporte: 'sin_ubicar',
+      })
+    }
+  })
+})
+
 describe('instalar — dejar la hoja lista de una ejecución', () => {
   it('crea todas las pestañas con su encabezado sobre un libro vacío', () => {
     const vacio = crearEntorno({ hojas: {} })
