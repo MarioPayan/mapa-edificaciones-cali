@@ -59,9 +59,13 @@ export function MapaEdificaciones({
       // El zoom se hace con los dedos; los botones estorban en una pantalla pequeña.
       zoomControl: false,
     })
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // Positron (Carto): fondo gris pensado para datos — el semáforo se lee de
+    // un vistazo y no compite con vías de colores. Sin llave; {r} sirve @2x en
+    // pantallas retina.
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,
-      attribution: '&copy; colaboradores de OpenStreetMap',
+      subdomains: 'abcd',
+      attribution: '&copy; colaboradores de OpenStreetMap &copy; CARTO',
     }).addTo(m)
     L.control.zoom({ position: 'bottomright' }).addTo(m)
     capa.current = L.layerGroup().addTo(m)
